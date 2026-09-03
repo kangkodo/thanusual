@@ -1,135 +1,121 @@
-const CATS = ["전체", "인구밀집지역", "공원", "발달상권", "관광특구", "고궁·문화유산"];
-const LEVEL_RANK = { "붐빔": 4, "약간 붐빔": 3, "보통": 2, "여유": 1 };
+const CATS = [
+  ["전체", "전체"],
+  ["인구밀집지역", "인구밀집"],
+  ["공원", "공원"],
+  ["발달상권", "발달상권"],
+  ["관광특구", "관광특구"],
+  ["고궁·문화유산", "고궁"],
+];
+const RANK = { "붐빔": 4, "약간 붐빔": 3, "보통": 2, "여유": 1 };
 const DATA_URLS = [
   "https://raw.githubusercontent.com/kangkodo/thanusual/data/current.json",
   "https://cdn.jsdelivr.net/gh/kangkodo/thanusual@data/current.json",
   "./data/current.json",
 ];
 
+const $ = (id) => document.getElementById(id);
 const state = { cat: "전체", data: null };
 
-function fmtPeople(n) {
-  if (n == null || Number.isNaN(n)) return "—";
-  return new Intl.NumberFormat("ko-KR").format(n);
+const fmt = (n) => (n == null || Number.isNaN(n) ? "—" : n.toLocaleString("ko-KR"));
+
+function later(place) {
+  const a = place.mid;
+  const b = place.forecast_2h && place.forecast_2h.mid;
+  if (!(a > 0) || b == null) return "2시간 뒤 —";
+  const pct = Math.round(((b - a) / a) * 100);
+  return pct ? `2시간 뒤 ${pct > 0 ? "+" : ""}${pct}%` : "2시간 뒤 유지";
 }
 
-function laterText(place) {
-  const now = place.mid;
-  const later = place.forecast_2h && place.forecast_2h.mid;
-  if (now == null || later == null || now <= 0) return "2시간 뒤 —";
-  const pct = Math.round(((later - now) / now) * 100);
-  if (pct === 0) return "2시간 뒤 유지";
-  const sign = pct > 0 ? "+" : "";
-  return `2시간 뒤 ${sign}${pct}%`;
-}
-
-function pillClass(level) {
-  if (!level) return "pill";
-  return `pill lvl-${level.replace(/\s+/g, "-")}`;
-}
-
-function sortedPlaces(data, cat) {
-  const rows = (data.places || []).filter((p) => p.state === "fresh");
-  const filtered = cat === "전체" ? rows : rows.filter((p) => p.category === cat);
-  return filtered.slice().sort((a, b) => {
-    const lr = (LEVEL_RANK[b.level] || 0) - (LEVEL_RANK[a.level] || 0);
-    if (lr) return lr;
-    return (b.mid || 0) - (a.mid || 0);
-  });
-}
-
-function renderTabs() {
-  const nav = document.getElementById("tabs");
-  nav.innerHTML = "";
-  for (const cat of CATS) {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.textContent = cat === "인구밀집지역" ? "인구밀집" : cat === "고궁·문화유산" ? "고궁" : cat;
-    btn.setAttribute("aria-pressed", String(cat === state.cat));
-    btn.addEventListener("click", () => {
-      state.cat = cat;
-      render();
-    });
-    nav.appendChild(btn);
-  }
-}
-
-function render() {
-  const data = state.data;
-  const stamp = document.getElementById("stamp");
-  const banner = document.getElementById("banner");
-  const board = document.getElementById("board");
-  renderTabs();
-  if (!data) {
-    stamp.textContent = "데이터를 불러오지 못했습니다.";
-    board.innerHTML = `<li class="empty">current.json을 읽지 못했습니다.</li>`;
-    return;
-  }
-  const source = data.source_at || data.generated_at;
-  stamp.textContent = `데이터 기준 ${source} · ${data.ok}/${data.total}곳`;
-  banner.hidden = false;
-  banner.textContent = data.warming
-    ? "평소 대비 %는 아직 집계 중입니다. 아래는 지금 붐빔 순입니다."
-    : "같은 요일·같은 시간대 표본으로 평소 대비를 계산합니다.";
-  const places = sortedPlaces(data, state.cat);
-  board.innerHTML = "";
-  if (!places.length) {
-    board.innerHTML = `<li class="empty">이 분류에 장소가 없습니다.</li>`;
-    return;
-  }
-  places.forEach((place, i) => {
-    const li = document.createElement("li");
-    li.className = "row";
-    const rank = document.createElement("span");
-    rank.className = "rank";
-    rank.textContent = String(i + 1).padStart(2, "0");
-    const name = document.createElement("span");
-    name.className = "name";
-    name.textContent = place.name;
-    const people = document.createElement("span");
-    people.className = "people-col people";
-    people.textContent = fmtPeople(place.mid);
-    const meta = document.createElement("div");
-    meta.className = "meta";
-    const lvl = document.createElement("span");
-    lvl.className = pillClass(place.level);
-    lvl.textContent = place.level || "—";
-    const cat = document.createElement("span");
-    cat.textContent = place.category;
-    const later = document.createElement("span");
-    later.className = "later";
-    later.textContent = laterText(place);
-    meta.append(lvl, cat, later);
-    li.append(rank, name, people, meta);
-    board.appendChild(li);
-  });
+function rowsOf(data, cat) {
+  return (data.places || [])
+    .filter((p) => p.state === "fresh" && (cat === "전체" || p.category === cat))
+    .sort((a, b) => (RANK[b.level] || 0) - (RANK[a.level] || 0) || (b.mid || 0) - (a.mid || 0));
 }
 
 function newer(a, b) {
   if (!a) return b;
   if (!b) return a;
-  const ak = a.source_at || a.generated_at || "";
-  const bk = b.source_at || b.generated_at || "";
-  return ak >= bk ? a : b;
+  return (a.source_at || a.generated_at || "") >= (b.source_at || b.generated_at || "") ? a : b;
+}
+
+function el(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text != null) node.textContent = text;
+  return node;
+}
+
+function renderTabs() {
+  const nav = $("tabs");
+  if (!nav.dataset.ready) {
+    nav.addEventListener("click", (e) => {
+      const btn = e.target.closest("button");
+      if (!btn) return;
+      state.cat = btn.dataset.cat;
+      render();
+    });
+    for (const [cat, label] of CATS) {
+      const btn = el("button");
+      btn.type = "button";
+      btn.dataset.cat = cat;
+      btn.textContent = label;
+      nav.append(btn);
+    }
+    nav.dataset.ready = "1";
+  }
+  for (const btn of nav.children) {
+    btn.setAttribute("aria-pressed", String(btn.dataset.cat === state.cat));
+  }
+}
+
+function render() {
+  renderTabs();
+  const data = state.data;
+  const stamp = $("stamp");
+  const banner = $("banner");
+  const board = $("board");
+  if (!data) {
+    stamp.textContent = "데이터를 불러오지 못했습니다.";
+    board.replaceChildren(el("li", "empty", "목록을 읽지 못했습니다."));
+    return;
+  }
+  stamp.textContent = `${data.source_at || data.generated_at} · ${data.ok}/${data.total}곳`;
+  banner.hidden = !data.warming;
+  banner.textContent = data.warming ? "평소 대비는 3주 뒤. 지금은 붐빔 순." : "";
+  const rows = rowsOf(data, state.cat);
+  if (!rows.length) {
+    board.replaceChildren(el("li", "empty", "이 분류에 장소가 없습니다."));
+    return;
+  }
+  const frag = document.createDocumentFragment();
+  const showCat = state.cat === "전체";
+  rows.forEach((place, i) => {
+    const li = el("li", "row");
+    const meta = el("div", "meta");
+    const lvl = el("span", place.level ? `lvl-${place.level.replace(/\s+/g, "-")}` : "", place.level || "—");
+    meta.append(lvl);
+    if (showCat) meta.append(el("span", "", place.category));
+    meta.append(el("span", "later", later(place)));
+    li.append(
+      el("span", "rank", String(i + 1)),
+      el("span", "name", place.name),
+      el("span", "people", fmt(place.mid)),
+      meta,
+    );
+    frag.append(li);
+  });
+  board.replaceChildren(frag);
 }
 
 async function loadJson(url) {
-  const bust = url + (url.includes("?") ? "&" : "?") + "t=" + Date.now();
-  const res = await fetch(bust, { cache: "no-store" });
+  const res = await fetch(`${url}${url.includes("?") ? "&" : "?"}t=${Date.now()}`, { cache: "no-store" });
   if (!res.ok) throw new Error(String(res.status));
   return res.json();
 }
 
 async function load() {
-  let best = null;
-  for (const url of DATA_URLS) {
-    try {
-      best = newer(best, await loadJson(url));
-    } catch (_) {
-      /* try next */
-    }
-  }
-  state.data = best;
+  const hits = await Promise.all(DATA_URLS.map((url) => loadJson(url).catch(() => null)));
+  state.data = hits.reduce(newer, null);
   render();
 }
 
