@@ -172,14 +172,14 @@ body.map-view #map {
   color: var(--ink);
   font-size: 0.85rem;
 }
-.leaflet-div-icon.pin-hot {
+.pin-hot {
   width: 24px;
   height: 24px;
   border-radius: 50%;
   background: var(--hot);
   border: 1px solid #9a3412;
 }
-.leaflet-div-icon.pin-hot.pin-selected {
+.pin-hot.pin-selected {
   box-shadow: 0 0 0 2px var(--ink);
 }
 .leaflet-container { font: inherit; }
