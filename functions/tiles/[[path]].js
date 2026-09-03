@@ -1,4 +1,4 @@
-import { parseTilePath, refererAllowed, upstreamUrl } from "../../lib/tiles.js";
+import { cacheKeyUrl, parseTilePath, refererAllowed, upstreamUrl } from "../../lib/tiles.js";
 
 const PNG = { "Content-Type": "image/png", "Cache-Control": "public, max-age=86400" };
 
@@ -15,7 +15,7 @@ export async function onRequestGet({ request, env, waitUntil }) {
   if (!key) return new Response("tiles unavailable", { status: 503 });
 
   const cache = typeof caches !== "undefined" ? caches.default : null;
-  const cacheReq = new Request(url.pathname, { method: "GET" });
+  const cacheReq = new Request(cacheKeyUrl(request.url), { method: "GET" });
   if (cache) {
     const hit = await cache.match(cacheReq);
     if (hit) return hit;
