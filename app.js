@@ -30,11 +30,28 @@ function renderViews() {
     nav.addEventListener("click", (e) => {
       const btn = e.target.closest("button");
       if (!btn || btn.disabled) return;
-      state.view = btn.dataset.view;
+      if (btn.dataset.view === "map") {
+        enterMap();
+        render();
+        return;
+      }
+      leaveMap();
       render();
+      window.scrollTo({ top: listScrollY, behavior: "instant" });
     });
     nav.dataset.ready = "1";
   }
+}
+
+let listScrollY = 0;
+
+function enterMap() {
+  if (state.view === "list") listScrollY = window.scrollY;
+  state.view = "map";
+}
+
+function leaveMap() {
+  state.view = "list";
 }
 
 function bindBoard() {
@@ -44,9 +61,10 @@ function bindBoard() {
     const li = e.target.closest(".row");
     if (!li || !li.dataset.name) return;
     state.selected = li.dataset.name;
-    state.view = "map";
     state.focus = true;
+    enterMap();
     render();
+    $("map").focus({ preventScroll: true });
   });
   board.dataset.ready = "1";
 }
@@ -79,12 +97,15 @@ function render() {
   rows.forEach((place, i) => {
     const li = el("li", "row");
     li.dataset.name = place.name;
+    const btn = el("button", "row-btn");
+    btn.type = "button";
     const meta = el("div", "meta");
     const lvl = el("span", place.level ? `lvl-${place.level.replace(/\s+/g, "-")}` : "", place.level || "—");
     meta.append(lvl);
     if (showCat) meta.append(el("span", "", place.category));
     meta.append(el("span", "later", later(place)));
-    li.append(el("span", "rank", String(i + 1)), el("span", "name", place.name), el("span", "people", fmt(place.mid)), meta);
+    btn.append(el("span", "rank", String(i + 1)), el("span", "name", place.name), el("span", "people", fmt(place.mid)), meta);
+    li.append(btn);
     frag.append(li);
   });
   board.replaceChildren(frag);
@@ -92,11 +113,14 @@ function render() {
 }
 
 setMapPickHandler(() => {
+  leaveMap();
   render();
   const name = state.selected;
   if (!name) return;
   const row = $("board").querySelector(`[data-name="${CSS.escape(name)}"]`);
-  row?.scrollIntoView({ block: "center" });
+  if (!row) return;
+  row.scrollIntoView({ block: "center" });
+  row.querySelector(".row-btn")?.focus({ preventScroll: true });
 });
 
 async function loadJson(url) {

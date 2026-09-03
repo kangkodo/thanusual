@@ -45,6 +45,14 @@ export function el(tag, className, text) {
   return node;
 }
 
+// Seoul map bounds: Leaflet maxBounds and the coordinate sanity check share them.
+export const BOUNDS = [
+  [37.42, 126.76],
+  [37.7, 127.18],
+];
+
 export function hasCoords(place) {
-  return Number.isFinite(place.lat) && Number.isFinite(place.lng);
+  const { lat, lng } = place;
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false;
+  return lat >= BOUNDS[0][0] && lat <= BOUNDS[1][0] && lng >= BOUNDS[0][1] && lng <= BOUNDS[1][1];
 }

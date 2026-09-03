@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test map-radius.test.js lib/tiles.test.js",
+    "test": "node --test '*.test.js' 'lib/*.test.js' 'functions/**/*.test.js'",
     "dev": "wrangler pages dev ."
   }
 }

@@ -51,7 +51,9 @@ cartocdn light_all PNG
 - Ads, Naver search, osm.org tiles, MapLibre, `leaflet.heat`, VWorld (this slice)
 - Rewriting the ranking list or a new design system
 - Playwright in this PR
-- Seoul tile-index clamp on the proxy (Leaflet `maxBounds` is enough)
+- Rate limiting on `/tiles/*`. Not possible as a WAF rule on a bare `*.pages.dev` host (no zone); needs a custom domain or a code-side limiter. Open risk, tracked in `CLAUDE.md`.
+
+Moved into scope by /review: the proxy clamps to z10–18 inside `TILE_BBOX` (`lib/tiles.js`) because the Referer gate is forgeable by any non-browser client; Leaflet's `tileLayer.bounds` mirrors it so no legit request hits the 400.
 
 ## Failure modes
 

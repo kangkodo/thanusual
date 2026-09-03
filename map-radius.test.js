@@ -26,3 +26,13 @@ test("min-max lerp at ends", () => {
   assert.equal(lo, BASE["여유"] * 0.8);
   assert.ok(Math.abs(hi - BASE["여유"] * 1.2) < 1e-9);
 });
+
+test("midpoint and duplicate mids share one t", () => {
+  const peers = [{ mid: 100 }, { mid: 150 }, { mid: 150 }, { mid: 200 }];
+  assert.ok(Math.abs(radiusPx({ level: "보통", mid: 150 }, peers) - BASE["보통"]) < 1e-9);
+});
+
+test("non-positive or missing peer mids are ignored", () => {
+  assert.equal(radiusPx({ level: "여유", mid: 100 }, [{ mid: null }, { mid: 0 }, { mid: 100 }]), BASE["여유"]);
+  assert.equal(radiusPx({ level: "붐빔", mid: 5 }, undefined), BASE["붐빔"]);
+});
