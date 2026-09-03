@@ -1,9 +1,9 @@
 const CATS = ["전체", "인구밀집지역", "공원", "발달상권", "관광특구", "고궁·문화유산"];
 const LEVEL_RANK = { "붐빔": 4, "약간 붐빔": 3, "보통": 2, "여유": 1 };
 const DATA_URLS = [
-  "./data/current.json",
-  "https://raw.githubusercontent.com/kangkodo/thanusual/data/data/current.json",
   "https://raw.githubusercontent.com/kangkodo/thanusual/data/current.json",
+  "https://cdn.jsdelivr.net/gh/kangkodo/thanusual@data/current.json",
+  "./data/current.json",
 ];
 
 const state = { cat: "전체", data: null };
@@ -105,8 +105,17 @@ function render() {
   });
 }
 
+function newer(a, b) {
+  if (!a) return b;
+  if (!b) return a;
+  const ak = a.source_at || a.generated_at || "";
+  const bk = b.source_at || b.generated_at || "";
+  return ak >= bk ? a : b;
+}
+
 async function loadJson(url) {
-  const res = await fetch(url, { cache: "no-store" });
+  const bust = url + (url.includes("?") ? "&" : "?") + "t=" + Date.now();
+  const res = await fetch(bust, { cache: "no-store" });
   if (!res.ok) throw new Error(String(res.status));
   return res.json();
 }
@@ -115,8 +124,7 @@ async function load() {
   let best = null;
   for (const url of DATA_URLS) {
     try {
-      const data = await loadJson(url);
-      if (!best || String(data.generated_at) > String(best.generated_at)) best = data;
+      best = newer(best, await loadJson(url));
     } catch (_) {
       /* try next */
     }

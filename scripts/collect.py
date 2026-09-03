@@ -118,8 +118,11 @@ def fetch_place(key: str, name: str) -> tuple[dict | None, str | None]:
     return block[0], None
 
 
+KST = datetime.timezone(datetime.timedelta(hours=9))
+
+
 def collect(places: list[dict], key: str) -> dict:
-    now = datetime.datetime.now()
+    now = datetime.datetime.now(KST).replace(tzinfo=None)
     out_places = []
     errors = []
     for i, place in enumerate(places):
