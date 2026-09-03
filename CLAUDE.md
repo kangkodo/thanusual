@@ -24,6 +24,13 @@ First screen is a ranked list, not a map. Copy: name, congestion grade, people m
 - Optional later: Naver place search for coordinates, then plot on the Leaflet map. Do not put Naver REST keys in git or in the browser bundle.
 - Custom pins and density viz are in scope. Rewriting the ranking list is out of scope unless a later /office-hours says otherwise.
 
+## Design
+
+- Reference: `../vercel-design.md` (Vercel brand guideline) for judgment only: Geist type, monochrome, spacing tokens, no cards, evidence-first first screen, light/dark without a switcher. Do **not** add the Vercel wordmark, triangle, or `vercel-brand.css`; this is not a Vercel-authored page.
+- Fonts: Geist Sans/Mono vendored in `vendor/geist/` (OFL). Hangul falls back to the system gothic stack. No Google Fonts or other CDN assets.
+- Tokens live in `styles.css` `:root` (`--surface`, `--text`, `--border*`, `--hot`, `--calm`, `--space-*`, `--type-*`). Page CSS uses tokens, never raw hex. Map circle colors come from those tokens via `STYLE[level].token` in `map-radius.js`, resolved at draw time in `map.js`.
+- Copy: sentence case, no em dashes in prose, no eyebrows or pills. Level color (`--hot`) is always paired with the level text.
+
 ## Deploy Configuration (configured by /setup-deploy)
 
 - Platform: Cloudflare Pages

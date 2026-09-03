@@ -29,20 +29,40 @@ function pinPlace(place, zoom) {
   return zoom >= PIN_ZOOM && (place.level === "붐빔" || place.level === "약간 붐빔");
 }
 
+let theme = null;
+
+function token(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || "#8f8f8f";
+}
+
+function readTheme() {
+  theme = { ink: token("--text") };
+  for (const [level, s] of Object.entries(STYLE)) theme[level] = token(s.token);
+}
+
 function circleStyle(place, peers, selected) {
   const s = STYLE[place.level] || STYLE.보통;
+  const color = theme[place.level] || theme.보통;
   return {
     radius: radiusPx(place, peers),
-    color: selected ? "#171717" : s.color,
-    fillColor: s.color,
+    color: selected ? theme.ink : color,
+    fillColor: color,
     weight: selected ? 2 : 1,
     fillOpacity: s.fillOpacity,
   };
 }
 
+if (typeof window !== "undefined" && window.matchMedia) {
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+    readTheme();
+    if (map && state.view === "map") drawOverlays();
+  });
+}
+
 function drawOverlays() {
   if (!map || !state.data) return;
   if (!overlays) overlays = window.L.layerGroup().addTo(map);
+  if (!theme) readTheme();
   overlays.clearLayers();
   const zoom = map.getZoom();
   pinsDrawn = zoom >= PIN_ZOOM;

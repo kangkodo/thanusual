@@ -1,10 +1,12 @@
 export const BASE = { 붐빔: 22, "약간 붐빔": 16, 보통: 11, 여유: 6 };
 
+// Colors are CSS custom properties from styles.css so the map follows the
+// light/dark theme. map.js resolves them at draw time.
 export const STYLE = {
-  붐빔: { color: "#c2410c", fillOpacity: 0.85 },
-  "약간 붐빔": { color: "#c2410c", fillOpacity: 0.7 },
-  보통: { color: "#525252", fillOpacity: 0.4 },
-  여유: { color: "#0f766e", fillOpacity: 0.25 },
+  붐빔: { token: "--hot", fillOpacity: 0.85 },
+  "약간 붐빔": { token: "--hot", fillOpacity: 0.7 },
+  보통: { token: "--chart-neutral", fillOpacity: 0.4 },
+  여유: { token: "--calm", fillOpacity: 0.25 },
 };
 
 export function radiusPx(place, peers) {
