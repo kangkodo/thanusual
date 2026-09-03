@@ -1,0 +1,9 @@
+{
+  "name": "thanusual",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test map-radius.test.js lib/tiles.test.js",
+    "dev": "wrangler pages dev ."
+  }
+}
