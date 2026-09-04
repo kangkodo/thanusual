@@ -3,34 +3,49 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
   <title>평소보다</title>
   <meta name="description" content="서울 121곳, 지금 붐비는 곳부터.">
+  <link rel="preload" href="./vendor/geist/Geist-Variable.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="./vendor/leaflet/leaflet.css">
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
-  <a class="skip" id="skip" href="#board">목록으로</a>
-  <header>
-    <h1>평소보다</h1>
-    <p class="lede">지금 붐빔 순</p>
-    <p class="stamp" id="stamp" role="status">불러오는 중</p>
-  </header>
-  <p class="banner" id="banner" hidden></p>
-  <nav class="tabs" id="tabs" aria-label="장소 분류"></nav>
-  <nav class="views" id="views" aria-label="보기">
-    <button type="button" data-view="list" aria-pressed="true">목록</button>
-    <button type="button" data-view="map">지도</button>
-  </nav>
-  <main>
-    <ol class="board" id="board"></ol>
-  </main>
-  <div class="map-shell">
-    <p class="map-status" id="map-status" role="status" hidden></p>
-    <div id="map" tabindex="-1"></div>
+  <div class="shell">
+    <a class="skip" id="skip" href="#board">목록으로</a>
+    <header class="masthead">
+      <span class="identity">평소보다</span>
+      <p class="stamp" id="stamp" role="status">불러오는 중</p>
+    </header>
+    <main id="main">
+      <section class="opening">
+        <h1 class="title">지금 붐비는 곳부터</h1>
+        <p class="lede">서울 주요 장소를 지금 인원이 많은 순서로 보여줍니다.</p>
+        <p class="note" id="banner" hidden></p>
+      </section>
+      <nav class="tabs" id="tabs" aria-label="장소 분류"></nav>
+      <nav class="views" id="views" aria-label="보기">
+        <button type="button" data-view="list" aria-pressed="true">목록</button>
+        <button type="button" data-view="map">지도</button>
+      </nav>
+      <div class="board-head" aria-hidden="true">
+        <span class="rank">순위</span>
+        <span class="name">장소</span>
+        <span class="level">혼잡</span>
+        <span class="people">인원</span>
+        <span class="later">2시간 뒤</span>
+      </div>
+      <ol class="board" id="board"></ol>
+      <div class="map-shell">
+        <p class="map-status" id="map-status" role="status" hidden></p>
+        <div id="map" tabindex="-1"></div>
+      </div>
+    </main>
+    <footer class="foot">
+      <span class="identity">평소보다</span>
+      <p class="sources">서울 열린데이터광장 실시간 도시데이터 · <a href="https://github.com/kangkodo/thanusual">소스</a></p>
+    </footer>
   </div>
-  <footer>
-    <p>서울 열린데이터광장 · <a href="https://github.com/kangkodo/thanusual">소스</a></p>
-  </footer>
   <script defer src="./vendor/leaflet/leaflet.js"></script>
   <script type="module" src="./app.js"></script>
 </body>

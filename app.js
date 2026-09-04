@@ -83,9 +83,9 @@ function render() {
     syncMap();
     return;
   }
-  stamp.textContent = `${data.source_at || data.generated_at} · ${data.ok}/${data.total}곳`;
+  stamp.replaceChildren(el("time", "stamp-time", data.source_at || data.generated_at), el("span", "stamp-count", `${data.ok}/${data.total}곳`));
   banner.hidden = !data.warming;
-  banner.textContent = data.warming ? "평소 대비는 3주 뒤. 지금은 붐빔 순." : "";
+  banner.textContent = data.warming ? "평소 대비 %는 같은 요일·시간대 자료가 3주 쌓인 뒤 표시됩니다. 지금은 인원 순입니다." : "";
   const rows = rowsOf(data, state.cat);
   if (!rows.length) {
     board.replaceChildren(el("li", "empty", "이 분류에 장소가 없습니다."));
@@ -99,12 +99,15 @@ function render() {
     li.dataset.name = place.name;
     const btn = el("button", "row-btn");
     btn.type = "button";
+    const name = el("span", "name");
+    name.append(el("span", "", place.name));
+    if (showCat) name.append(el("span", "cat", place.category));
     const meta = el("div", "meta");
-    const lvl = el("span", place.level ? `lvl-${place.level.replace(/\s+/g, "-")}` : "", place.level || "—");
-    meta.append(lvl);
-    if (showCat) meta.append(el("span", "", place.category));
-    meta.append(el("span", "later", later(place)));
-    btn.append(el("span", "rank", String(i + 1)), el("span", "name", place.name), el("span", "people", fmt(place.mid)), meta);
+    const lvl = el("span", place.level ? `level lvl-${place.level.replace(/\s+/g, "-")}` : "level", place.level || "—");
+    const lat = el("span", "later");
+    lat.append(el("span", "later-label", "2시간 뒤"), el("span", "later-value", later(place).replace(/^2시간 뒤\s*/, "")));
+    meta.append(lvl, lat);
+    btn.append(el("span", "rank", String(i + 1)), name, el("span", "people", fmt(place.mid)), meta);
     li.append(btn);
     frag.append(li);
   });
