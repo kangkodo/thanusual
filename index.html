@@ -12,43 +12,27 @@
 </head>
 <body>
   <div class="shell">
-    <a class="skip" id="skip" href="#board">목록으로</a>
+    <a class="skip" id="skip" href="#board">장소 목록으로</a>
     <div class="rail" id="rail">
       <button type="button" class="sheet-handle" id="sheet-handle" aria-expanded="false" aria-controls="board">
         <span class="sheet-grip" aria-hidden="true"></span>
-        장소 목록
+        지금 붐비는 곳부터
       </button>
       <header class="masthead">
-        <span class="identity">평소보다</span>
+        <h1 class="identity">평소보다</h1>
         <p class="stamp" id="stamp" role="status">불러오는 중</p>
       </header>
       <main id="main">
-        <section class="opening">
-          <h1 class="title">지금 붐비는 곳부터</h1>
-          <p class="lede">서울 주요 장소를 지금 인원이 많은 순서로 보여줍니다.</p>
-          <p class="note" id="banner" hidden></p>
-        </section>
         <form class="place-search" id="place-search" role="search">
           <label class="sr-only" for="q">장소 이름</label>
           <input id="q" type="search" name="q" placeholder="장소 이름" autocomplete="off" enterkeyhint="search">
         </form>
+        <p class="note" id="banner" hidden></p>
         <nav class="tabs" id="tabs" aria-label="장소 분류"></nav>
-        <nav class="views" id="views" aria-label="보기">
-          <button type="button" data-view="list" aria-pressed="true">목록</button>
-          <button type="button" data-view="map">지도</button>
-        </nav>
-        <div class="board-head" aria-hidden="true">
-          <span class="rank">순위</span>
-          <span class="name">장소</span>
-          <span class="level">혼잡</span>
-          <span class="people">인원</span>
-          <span class="later">2시간 뒤</span>
-        </div>
         <ol class="board" id="board"></ol>
       </main>
       <footer class="foot">
-        <span class="identity">평소보다</span>
-        <p class="sources">서울 열린데이터광장 실시간 도시데이터 · <a href="https://github.com/kangkodo/thanusual">소스</a></p>
+        <p class="sources">서울 열린데이터광장 · <a href="https://github.com/kangkodo/thanusual">소스</a></p>
       </footer>
     </div>
     <div class="map-shell">

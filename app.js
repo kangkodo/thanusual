@@ -24,39 +24,6 @@ function renderTabs() {
   }
 }
 
-function renderViews() {
-  const nav = $("views");
-  if (!nav.dataset.ready) {
-    nav.addEventListener("click", (e) => {
-      const btn = e.target.closest("button");
-      if (!btn || btn.disabled) return;
-      if (btn.dataset.view === "map") {
-        enterMap();
-        render();
-        return;
-      }
-      leaveMap();
-      render();
-      window.scrollTo({ top: listScrollY, behavior: "instant" });
-    });
-    nav.dataset.ready = "1";
-  }
-}
-
-let listScrollY = 0;
-
-function enterMap() {
-  if (state.view === "list") listScrollY = window.scrollY;
-  state.view = "map";
-}
-
-function leaveMap() {
-  state.view = "list";
-  document.body.classList.remove("map-sheet-open");
-  const handle = $("sheet-handle");
-  if (handle) handle.setAttribute("aria-expanded", "false");
-}
-
 function bindSearch() {
   const form = $("place-search");
   if (!form || form.dataset.ready) return;
@@ -89,16 +56,14 @@ function bindBoard() {
     if (!li || !li.dataset.name) return;
     state.selected = li.dataset.name;
     state.focus = true;
-    if (state.view !== "map") enterMap();
     render();
-    $("map").focus({ preventScroll: true });
+    $("map")?.focus({ preventScroll: true });
   });
   board.dataset.ready = "1";
 }
 
 function render() {
   renderTabs();
-  renderViews();
   bindSearch();
   bindSheet();
   bindBoard();
@@ -115,7 +80,7 @@ function render() {
   stamp.replaceChildren(el("time", "stamp-time", data.source_at || data.generated_at), el("span", "stamp-count", `${data.ok}/${data.total}곳`));
   banner.hidden = !data.warming;
   banner.textContent = data.warming ? "평소 대비 %는 같은 요일·시간대 자료가 3주 쌓인 뒤 표시됩니다. 지금은 인원 순입니다." : "";
-  const rows = visibleRows(data, state.cat, state.view === "map" ? state.q : "");
+  const rows = visibleRows(data, state.cat, state.q);
   if (!rows.length) {
     const empty = state.q.trim() ? "이 이름에 맞는 장소가 없습니다." : "이 분류에 장소가 없습니다.";
     board.replaceChildren(el("li", "empty", empty));

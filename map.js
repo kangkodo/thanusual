@@ -55,7 +55,7 @@ function circleStyle(place, peers, selected) {
 if (typeof window !== "undefined" && window.matchMedia) {
   window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
     readTheme();
-    if (map && state.view === "map") drawOverlays();
+    if (map) drawOverlays();
   });
 }
 
@@ -160,25 +160,14 @@ function createMap(pane, status) {
 
 export function syncMap() {
   const skip = $("skip");
-  const views = $("views");
   const status = $("map-status");
   const pane = $("map");
-  const mapBtn = views && views.querySelector('[data-view="map"]');
-  const listBtn = views && views.querySelector('[data-view="list"]');
   const leafletOk = Boolean(window.L && pane);
-
-  if (!leafletOk && state.view === "map") state.view = "list";
 
   if (skip) {
     skip.href = "#board";
-    skip.textContent = state.view === "map" ? "장소 목록으로" : "목록으로";
+    skip.textContent = "장소 목록으로";
   }
-  if (listBtn) listBtn.setAttribute("aria-pressed", String(state.view === "list"));
-  if (mapBtn) {
-    mapBtn.disabled = !state.data || !leafletOk;
-    mapBtn.setAttribute("aria-pressed", String(state.view === "map"));
-  }
-  document.body.classList.toggle("map-view", state.view === "map");
 
   if (!state.data) {
     showStatus(status, "목록을 읽지 못했습니다.");
@@ -190,13 +179,10 @@ export function syncMap() {
   }
   if (status && !tileFailed) status.hidden = true;
 
-  if (state.view !== "map") return;
-
   if (!map) createMap(pane, status);
 
   cancelAnimationFrame(frame);
   frame = requestAnimationFrame(() => {
-    if (state.view !== "map") return;
     map.invalidateSize();
     if (state.focus && state.selected) {
       const place = (state.data.places || []).find((p) => p.name === state.selected && hasCoords(p));

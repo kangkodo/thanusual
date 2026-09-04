@@ -14,7 +14,7 @@ export const DATA_URLS = [
 ];
 
 export const $ = (id) => document.getElementById(id);
-export const state = { cat: "전체", q: "", data: null, view: "list", selected: null, focus: false };
+export const state = { cat: "전체", q: "", data: null, selected: null, focus: false };
 
 export const fmt = (n) => (n == null || Number.isNaN(n) ? "—" : n.toLocaleString("ko-KR"));
 
