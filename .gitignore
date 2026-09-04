@@ -1,7 +1,11 @@
 .env
 .env.*
+.dev.vars
 secrets/
 *.key
 __pycache__/
 .DS_Store
 .venv/
+.claude/skills/gstack/
+node_modules/
+.wrangler/

@@ -1,0 +1,9 @@
+{
+  "name": "thanusual",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test '*.test.js' 'lib/*.test.js' 'functions/**/*.test.js'",
+    "dev": "wrangler pages dev ."
+  }
+}

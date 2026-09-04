@@ -1,49 +1,5 @@
-const CATS = [
-  ["전체", "전체"],
-  ["인구밀집지역", "인구밀집"],
-  ["공원", "공원"],
-  ["발달상권", "발달상권"],
-  ["관광특구", "관광특구"],
-  ["고궁·문화유산", "고궁"],
-];
-const RANK = { "붐빔": 4, "약간 붐빔": 3, "보통": 2, "여유": 1 };
-const DATA_URLS = [
-  "https://raw.githubusercontent.com/kangkodo/thanusual/data/current.json",
-  "https://cdn.jsdelivr.net/gh/kangkodo/thanusual@data/current.json",
-  "./data/current.json",
-];
-
-const $ = (id) => document.getElementById(id);
-const state = { cat: "전체", data: null };
-
-const fmt = (n) => (n == null || Number.isNaN(n) ? "—" : n.toLocaleString("ko-KR"));
-
-function later(place) {
-  const a = place.mid;
-  const b = place.forecast_2h && place.forecast_2h.mid;
-  if (!(a > 0) || b == null) return "2시간 뒤 —";
-  const pct = Math.round(((b - a) / a) * 100);
-  return pct ? `2시간 뒤 ${pct > 0 ? "+" : ""}${pct}%` : "2시간 뒤 유지";
-}
-
-function rowsOf(data, cat) {
-  return (data.places || [])
-    .filter((p) => p.state === "fresh" && (cat === "전체" || p.category === cat))
-    .sort((a, b) => (RANK[b.level] || 0) - (RANK[a.level] || 0) || (b.mid || 0) - (a.mid || 0));
-}
-
-function newer(a, b) {
-  if (!a) return b;
-  if (!b) return a;
-  return (a.source_at || a.generated_at || "") >= (b.source_at || b.generated_at || "") ? a : b;
-}
-
-function el(tag, className, text) {
-  const node = document.createElement(tag);
-  if (className) node.className = className;
-  if (text != null) node.textContent = text;
-  return node;
-}
+import { $, CATS, DATA_URLS, el, fmt, later, newer, rowsOf, state } from "./shared.js";
+import { setMapPickHandler, syncMap } from "./map.js";
 
 function renderTabs() {
   const nav = $("tabs");
@@ -68,8 +24,55 @@ function renderTabs() {
   }
 }
 
+function renderViews() {
+  const nav = $("views");
+  if (!nav.dataset.ready) {
+    nav.addEventListener("click", (e) => {
+      const btn = e.target.closest("button");
+      if (!btn || btn.disabled) return;
+      if (btn.dataset.view === "map") {
+        enterMap();
+        render();
+        return;
+      }
+      leaveMap();
+      render();
+      window.scrollTo({ top: listScrollY, behavior: "instant" });
+    });
+    nav.dataset.ready = "1";
+  }
+}
+
+let listScrollY = 0;
+
+function enterMap() {
+  if (state.view === "list") listScrollY = window.scrollY;
+  state.view = "map";
+}
+
+function leaveMap() {
+  state.view = "list";
+}
+
+function bindBoard() {
+  const board = $("board");
+  if (board.dataset.ready) return;
+  board.addEventListener("click", (e) => {
+    const li = e.target.closest(".row");
+    if (!li || !li.dataset.name) return;
+    state.selected = li.dataset.name;
+    state.focus = true;
+    enterMap();
+    render();
+    $("map").focus({ preventScroll: true });
+  });
+  board.dataset.ready = "1";
+}
+
 function render() {
   renderTabs();
+  renderViews();
+  bindBoard();
   const data = state.data;
   const stamp = $("stamp");
   const banner = $("banner");
@@ -77,6 +80,7 @@ function render() {
   if (!data) {
     stamp.textContent = "데이터를 불러오지 못했습니다.";
     board.replaceChildren(el("li", "empty", "목록을 읽지 못했습니다."));
+    syncMap();
     return;
   }
   stamp.textContent = `${data.source_at || data.generated_at} · ${data.ok}/${data.total}곳`;
@@ -85,27 +89,39 @@ function render() {
   const rows = rowsOf(data, state.cat);
   if (!rows.length) {
     board.replaceChildren(el("li", "empty", "이 분류에 장소가 없습니다."));
+    syncMap();
     return;
   }
   const frag = document.createDocumentFragment();
   const showCat = state.cat === "전체";
   rows.forEach((place, i) => {
     const li = el("li", "row");
+    li.dataset.name = place.name;
+    const btn = el("button", "row-btn");
+    btn.type = "button";
     const meta = el("div", "meta");
     const lvl = el("span", place.level ? `lvl-${place.level.replace(/\s+/g, "-")}` : "", place.level || "—");
     meta.append(lvl);
     if (showCat) meta.append(el("span", "", place.category));
     meta.append(el("span", "later", later(place)));
-    li.append(
-      el("span", "rank", String(i + 1)),
-      el("span", "name", place.name),
-      el("span", "people", fmt(place.mid)),
-      meta,
-    );
+    btn.append(el("span", "rank", String(i + 1)), el("span", "name", place.name), el("span", "people", fmt(place.mid)), meta);
+    li.append(btn);
     frag.append(li);
   });
   board.replaceChildren(frag);
+  syncMap();
 }
+
+setMapPickHandler(() => {
+  leaveMap();
+  render();
+  const name = state.selected;
+  if (!name) return;
+  const row = $("board").querySelector(`[data-name="${CSS.escape(name)}"]`);
+  if (!row) return;
+  row.scrollIntoView({ block: "center" });
+  row.querySelector(".row-btn")?.focus({ preventScroll: true });
+});
 
 async function loadJson(url) {
   const res = await fetch(`${url}${url.includes("?") ? "&" : "?"}t=${Date.now()}`, { cache: "no-store" });

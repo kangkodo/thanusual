@@ -11,6 +11,8 @@
 html { scroll-padding-top: var(--tab); }
 html, body { margin: 0; }
 body {
+  display: flex;
+  flex-direction: column;
   background: var(--bg);
   color: var(--ink);
   font-family: "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
@@ -27,9 +29,10 @@ body {
   color: var(--bg);
 }
 .skip:focus { top: 0.5rem; }
-header, .banner, .tabs, .board, footer {
+header, .banner, .tabs, .views, .board, footer {
   max-width: 40rem;
   margin: 0 auto;
+  width: 100%;
 }
 header { padding: 1.5rem 1rem 0.75rem; }
 h1 {
@@ -76,20 +79,64 @@ h1 {
   color: var(--ink);
   border-bottom-color: var(--ink);
 }
+.views {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.15rem 0.5rem 0.35rem;
+  border-bottom: 1px solid var(--line);
+}
+.views button {
+  appearance: none;
+  min-height: 44px;
+  padding: 0.4rem 0.7rem;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--muted);
+  font: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.views button:not(:disabled):hover {
+  background: #fafafa;
+  border-color: var(--muted);
+}
+.views button[aria-pressed="true"] {
+  color: var(--ink);
+  border-color: var(--ink);
+}
+.views button:disabled {
+  cursor: not-allowed;
+  color: #8a8a8a;
+  border-style: dashed;
+}
 .board {
   list-style: none;
   padding: 0 0 3rem;
 }
 .row {
+  border-bottom: 1px solid var(--line);
+  scroll-margin-top: var(--tab);
+}
+.row-btn {
+  appearance: none;
   display: grid;
   grid-template-columns: 2rem minmax(0, 1fr) auto;
   gap: 0.15rem 0.7rem;
   align-items: baseline;
+  width: 100%;
+  margin: 0;
   padding: 0.7rem 1rem;
-  border-bottom: 1px solid var(--line);
-  scroll-margin-top: var(--tab);
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  line-height: inherit;
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
 }
-.row:hover { background: #fafafa; }
+.row-btn:hover { background: #fafafa; }
+.row-btn:focus-visible { outline-offset: -2px; }
 .row:has(.lvl-붐빔) { box-shadow: inset 3px 0 0 var(--hot); }
 .row:has(.lvl-약간-붐빔) { box-shadow: inset 2px 0 0 var(--hot); }
 .rank, .people, .later {
@@ -114,6 +161,50 @@ footer {
   border-top: 1px solid var(--line);
 }
 footer a { color: var(--ink); }
+.map-shell { display: none; }
+body.map-view main,
+body.map-view footer { display: none; }
+body.map-view .map-shell {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  position: relative;
+  isolation: isolate;
+}
+body.map-view #map {
+  flex: 1 1 auto;
+  min-height: 16rem;
+  background: var(--line);
+}
+.map-status {
+  position: absolute;
+  z-index: 1000;
+  left: 50%;
+  bottom: 2.75rem;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: calc(100% - 2rem);
+  margin: 0;
+  padding: 0.4rem 0.7rem;
+  text-align: center;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--ink);
+  font-size: 0.85rem;
+}
+.pin-hot {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--hot);
+  border: 1px solid var(--bg);
+}
+.pin-hot.pin-selected {
+  box-shadow: 0 0 0 2px var(--ink);
+}
+.pin-hot:hover { filter: brightness(0.85); }
+.leaflet-marker-icon:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.leaflet-container { font: inherit; }
 :focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) {
   * { scroll-behavior: auto !important; }

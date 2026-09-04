@@ -1,3 +1,4 @@
 name = "thanusual"
 compatibility_date = "2026-09-03"
 pages_build_output_dir = "."
+# Map tiles: set Pages secret CARTO_API_KEY. Never commit it.

@@ -5,10 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>평소보다</title>
   <meta name="description" content="서울 121곳, 지금 붐비는 곳부터.">
+  <link rel="stylesheet" href="./vendor/leaflet/leaflet.css">
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
-  <a class="skip" href="#board">목록으로</a>
+  <a class="skip" id="skip" href="#board">목록으로</a>
   <header>
     <h1>평소보다</h1>
     <p class="lede">지금 붐빔 순</p>
@@ -16,12 +17,21 @@
   </header>
   <p class="banner" id="banner" hidden></p>
   <nav class="tabs" id="tabs" aria-label="장소 분류"></nav>
+  <nav class="views" id="views" aria-label="보기">
+    <button type="button" data-view="list" aria-pressed="true">목록</button>
+    <button type="button" data-view="map">지도</button>
+  </nav>
   <main>
     <ol class="board" id="board"></ol>
   </main>
+  <div class="map-shell">
+    <p class="map-status" id="map-status" role="status" hidden></p>
+    <div id="map" tabindex="-1"></div>
+  </div>
   <footer>
     <p>서울 열린데이터광장 · <a href="https://github.com/kangkodo/thanusual">소스</a></p>
   </footer>
-  <script src="./app.js"></script>
+  <script defer src="./vendor/leaflet/leaflet.js"></script>
+  <script type="module" src="./app.js"></script>
 </body>
 </html>
