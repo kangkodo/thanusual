@@ -1,4 +1,4 @@
-import { $, CATS, DATA_URLS, el, fmt, later, newer, rowsOf, state } from "./shared.js";
+import { $, CATS, DATA_URLS, el, fmt, later, newer, visibleRows, state } from "./shared.js";
 import { setMapPickHandler, syncMap } from "./map.js";
 
 function renderTabs() {
@@ -52,6 +52,33 @@ function enterMap() {
 
 function leaveMap() {
   state.view = "list";
+  document.body.classList.remove("map-sheet-open");
+  const handle = $("sheet-handle");
+  if (handle) handle.setAttribute("aria-expanded", "false");
+}
+
+function bindSearch() {
+  const form = $("place-search");
+  if (!form || form.dataset.ready) return;
+  form.addEventListener("submit", (e) => e.preventDefault());
+  form.addEventListener("input", (e) => {
+    const input = e.target;
+    if (!(input instanceof HTMLInputElement) || input.id !== "q") return;
+    state.q = input.value;
+    render();
+  });
+  form.dataset.ready = "1";
+}
+
+function bindSheet() {
+  const btn = $("sheet-handle");
+  if (!btn || btn.dataset.ready) return;
+  btn.addEventListener("click", () => {
+    const open = document.body.classList.toggle("map-sheet-open");
+    btn.setAttribute("aria-expanded", String(open));
+    syncMap();
+  });
+  btn.dataset.ready = "1";
 }
 
 function bindBoard() {
@@ -62,7 +89,7 @@ function bindBoard() {
     if (!li || !li.dataset.name) return;
     state.selected = li.dataset.name;
     state.focus = true;
-    enterMap();
+    if (state.view !== "map") enterMap();
     render();
     $("map").focus({ preventScroll: true });
   });
@@ -72,6 +99,8 @@ function bindBoard() {
 function render() {
   renderTabs();
   renderViews();
+  bindSearch();
+  bindSheet();
   bindBoard();
   const data = state.data;
   const stamp = $("stamp");
@@ -86,16 +115,17 @@ function render() {
   stamp.replaceChildren(el("time", "stamp-time", data.source_at || data.generated_at), el("span", "stamp-count", `${data.ok}/${data.total}곳`));
   banner.hidden = !data.warming;
   banner.textContent = data.warming ? "평소 대비 %는 같은 요일·시간대 자료가 3주 쌓인 뒤 표시됩니다. 지금은 인원 순입니다." : "";
-  const rows = rowsOf(data, state.cat);
+  const rows = visibleRows(data, state.cat, state.view === "map" ? state.q : "");
   if (!rows.length) {
-    board.replaceChildren(el("li", "empty", "이 분류에 장소가 없습니다."));
+    const empty = state.q.trim() ? "이 이름에 맞는 장소가 없습니다." : "이 분류에 장소가 없습니다.";
+    board.replaceChildren(el("li", "empty", empty));
     syncMap();
     return;
   }
   const frag = document.createDocumentFragment();
   const showCat = state.cat === "전체";
   rows.forEach((place, i) => {
-    const li = el("li", "row");
+    const li = el("li", place.name === state.selected ? "row is-selected" : "row");
     li.dataset.name = place.name;
     const btn = el("button", "row-btn");
     btn.type = "button";
@@ -116,13 +146,12 @@ function render() {
 }
 
 setMapPickHandler(() => {
-  leaveMap();
   render();
   const name = state.selected;
   if (!name) return;
   const row = $("board").querySelector(`[data-name="${CSS.escape(name)}"]`);
   if (!row) return;
-  row.scrollIntoView({ block: "center" });
+  row.scrollIntoView({ block: "nearest" });
   row.querySelector(".row-btn")?.focus({ preventScroll: true });
 });
 

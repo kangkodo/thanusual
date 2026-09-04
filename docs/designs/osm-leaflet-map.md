@@ -76,7 +76,7 @@ Ruled out this slice: `leaflet.heat`. 121 공식 점은 안개가 아니라 섬�
 | 정렬·가중 | 목록과 동일: `RANK[level]` 내림차순, 그다음 `mid`. 평소 대비 %는 `warming`이 true면 지도에도 안 쓴다. |
 | 원 크기 | `circleMarker`만. `weight: 1`. 페인트 여유→붐빔 (먼저 add). `BASE = {붐빔:22, "약간 붐빔":16, 보통:11, 여유:6}`. 같은 등급 peers의 mid min–max로 `t`, `radius = base*(0.8+0.4*t)`. mid 없거나 n<2 또는 min=max면 `base`. |
 | 원 색 | 붐빔·약간 `--hot` fillOpacity 0.85 / 0.7. 보통 `--muted` 0.4 (밝은 타일에서 `--ink` 채우기 금지). 여유 `--calm` 0.25. |
-| 줌 | 초기 `setView([37.55, 126.98], 11)`. `minZoom: 10`. `maxBounds: [[37.42, 126.76], [37.70, 127.18]]`, `maxBoundsViscosity: 1`. `z≤12` 위 원. `z≥13` 붐빔·약간만 24px `--hot` DivIcon (이름 없음). 보통·여유는 원 유지. |
+| 줌 | 초기 `setView([37.55, 126.98], 11)`. `minZoom: 10`. `maxBounds: [[37.42, 126.76], [37.70, 127.18]]`, `maxBoundsViscosity: 1`. `z≤12` 위 원. `z≥13` 붐빔·약간만 24px `--hot` DivIcon. 보통·여유는 원 유지. `z≥13`에서 장소 이름을 핀/원 오른쪽에 붙인다 (박스 없는 라벨). |
 | 높이 | `#map`은 헤더+배너(보일 때)+분류+보기 아래 남은 `100dvh`. `view=map`일 때 `footer` 숨김. 저작권은 Leaflet `attributionControl`. 헤더·탭 max-width 40rem. 지도 full-bleed. |
 | 연동 | 행 클릭 → `view=map`, `setView([lat,lng], 14)` (항상 setView). 선택: `--ink` 2px 링 후 `bringToFront()`. 핀/원 클릭 → `view=list`, `li[data-name]` `scrollIntoView`. |
 | 타일 | 클라이언트 `/tiles/{z}/{x}/{y}{r}.png` (`{r}`는 `""` 또는 `@2x`). Pages Function이 `CARTO_API_KEY`를 붙인다. git에 키 없음. osm.org 폴백 금지. 타일 실패 시 `#e5e5e5` + 오버레이. |

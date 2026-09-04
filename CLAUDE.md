@@ -22,7 +22,7 @@ First screen is a ranked list, not a map. Copy: name, congestion grade, people m
 - There is **no rate limit** on `/tiles/*` today. WAF rate-limiting rules need a zone, and a bare `*.pages.dev` host has none. Options when needed: attach a custom domain (then a WAF rule), or a code-side limiter. Every `/tiles/*` hit, including 400/403, counts toward the Pages Functions daily cap. Watch the Functions metrics after launch.
 - Bump `TILE_CACHE_VERSION` in `lib/tiles.js` when tile headers or style change; pages.dev has no cache purge.
 - Optional later: Naver place search for coordinates, then plot on the Leaflet map. Do not put Naver REST keys in git or in the browser bundle.
-- Custom pins and density viz are in scope. Rewriting the ranking list is out of scope unless a later /office-hours says otherwise.
+- Custom pins and density viz are in scope. Place names appear at zoom ≥13 as plain map labels (Leaflet tooltip, no extra library). City zoom stays unlabeled. Map view keeps the ranking in a left rail (desktop) or bottom sheet (phone), with name search. Pin click stays on the map and selects the row. Rewriting the ranking list is out of scope unless a later /office-hours says otherwise.
 
 ## Design
 

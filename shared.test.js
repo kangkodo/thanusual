@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { hasCoords, later, newer, rowsOf } from "./shared.js";
+import { hasCoords, later, newer, rowsOf, visibleRows } from "./shared.js";
 
 test("rowsOf keeps fresh rows, sorted by grade then mid", () => {
   const data = {
@@ -15,6 +15,19 @@ test("rowsOf keeps fresh rows, sorted by grade then mid", () => {
   assert.deepEqual(rowsOf(data, "전체").map((p) => p.mid), [7, 1, 5, undefined]);
   assert.deepEqual(rowsOf(data, "공원").map((p) => p.mid), [1, 5, undefined]);
   assert.deepEqual(rowsOf({}, "전체"), []);
+});
+
+test("visibleRows filters by name without changing sort", () => {
+  const data = {
+    places: [
+      { state: "fresh", name: "강남역", level: "붐빔", mid: 9, category: "인구밀집지역" },
+      { state: "fresh", name: "서울숲", level: "여유", mid: 2, category: "공원" },
+      { state: "fresh", name: "강남 MICE관광특구", level: "보통", mid: 4, category: "관광특구" },
+    ],
+  };
+  assert.deepEqual(visibleRows(data, "전체", "").map((p) => p.name), ["강남역", "강남 MICE관광특구", "서울숲"]);
+  assert.deepEqual(visibleRows(data, "전체", " 강남 ").map((p) => p.name), ["강남역", "강남 MICE관광특구"]);
+  assert.deepEqual(visibleRows(data, "공원", "강남").map((p) => p.name), []);
 });
 
 test("later handles missing, zero, and equal forecasts", () => {

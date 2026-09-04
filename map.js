@@ -1,4 +1,4 @@
-import { $, BOUNDS, RANK, hasCoords, rowsOf, state } from "./shared.js";
+import { $, BOUNDS, RANK, hasCoords, visibleRows, state } from "./shared.js";
 import { radiusPx, STYLE } from "./map-radius.js";
 
 const SEOUL = [37.55, 126.98];
@@ -66,7 +66,7 @@ function drawOverlays() {
   overlays.clearLayers();
   const zoom = map.getZoom();
   pinsDrawn = zoom >= PIN_ZOOM;
-  const rows = rowsOf(state.data, state.cat);
+  const rows = visibleRows(state.data, state.cat, state.q);
   const peersByLevel = new Map();
   for (const p of rows) {
     if (!peersByLevel.has(p.level)) peersByLevel.set(p.level, []);
@@ -89,7 +89,6 @@ function drawOverlays() {
     }
     const pick = () => {
       state.selected = place.name;
-      state.view = "list";
       state.focus = false;
       onPick?.();
     };
@@ -99,6 +98,16 @@ function drawOverlays() {
       const hit = window.L.circleMarker([place.lat, place.lng], { radius: TAP_RADIUS, stroke: false, fillOpacity: 0 });
       hit.on("click", pick);
       overlays.addLayer(hit);
+    }
+    if (zoom >= PIN_ZOOM) {
+      const pad = layer.getRadius ? Math.round(layer.getRadius()) + 4 : 12;
+      layer.bindTooltip(place.name, {
+        permanent: true,
+        direction: "right",
+        offset: [pad, 0],
+        className: selected ? "place-label place-label-selected" : "place-label",
+        opacity: 1,
+      });
     }
     overlays.addLayer(layer);
     if (selected) selectedLayer = layer;
@@ -120,6 +129,7 @@ function createMap(pane, status) {
     maxBounds: BOUNDS,
     maxBoundsViscosity: 1,
   }).setView(SEOUL, 11);
+  map.zoomControl.setPosition("topright");
   window.L.tileLayer("/tiles/{z}/{x}/{y}{r}.png", {
     attribution:
       '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
@@ -160,8 +170,8 @@ export function syncMap() {
   if (!leafletOk && state.view === "map") state.view = "list";
 
   if (skip) {
-    skip.href = state.view === "map" ? "#map" : "#board";
-    skip.textContent = state.view === "map" ? "지도로" : "목록으로";
+    skip.href = "#board";
+    skip.textContent = state.view === "map" ? "장소 목록으로" : "목록으로";
   }
   if (listBtn) listBtn.setAttribute("aria-pressed", String(state.view === "list"));
   if (mapBtn) {
