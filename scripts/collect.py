@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import collections
 import datetime
 import json
 import time
@@ -72,7 +73,7 @@ def fetch_place(key: str, name: str) -> tuple[dict | None, str | None]:
     )
     try:
         raw = urllib.request.urlopen(
-            urllib.request.Request(url, headers=UA), timeout=25
+            urllib.request.Request(url, headers=UA), timeout=10
         ).read().decode("utf-8", "replace")
     except urllib.error.HTTPError as e:
         return None, f"http-{e.code}"
@@ -96,21 +97,24 @@ def fetch_place(key: str, name: str) -> tuple[dict | None, str | None]:
 
 
 KST = datetime.timezone(datetime.timedelta(hours=9))
+BUDGET_S = 420  # poll.sh kills the cycle at 8 min; stop early so a slow API yields a partial file, not nothing
 
 
 def collect(places: list[dict], key: str) -> dict:
     now = datetime.datetime.now(KST).replace(tzinfo=None)
     out_places = []
     errors = []
+    t0 = time.monotonic()
     for i, place in enumerate(places):
         name = place["name"]
         row = None
-        err = None
-        for _ in range(2):
-            row, err = fetch_place(key, name)
-            if row is not None:
-                break
-            time.sleep(0.6)
+        err = "budget"
+        if time.monotonic() - t0 < BUDGET_S:
+            for _ in range(2):
+                row, err = fetch_place(key, name)
+                if row is not None:
+                    break
+                time.sleep(0.6)
         if row is None:
             errors.append({"name": name, "error": err})
             out_places.append(
@@ -140,7 +144,7 @@ def collect(places: list[dict], key: str) -> dict:
                     "forecast_2h": forecast_at(row, source_dt, 2),
                 }
             )
-        if i + 1 < len(places):
+        if i + 1 < len(places) and err != "budget":
             time.sleep(0.3)
         if (i + 1) % 20 == 0:
             print(f"progress {i + 1}/{len(places)} ok {sum(p['state']=='fresh' for p in out_places)}", flush=True)
@@ -176,7 +180,12 @@ def main() -> None:
             f.write(json.dumps(payload, ensure_ascii=False, separators=(",", ":")) + "\n")
     print(f"ok {payload['ok']}/{payload['total']} source_at {payload['source_at']} -> {out}", flush=True)
     if payload["errors"]:
-        print("errors", len(payload["errors"]), [e["name"] for e in payload["errors"][:12]], flush=True)
+        codes = collections.Counter(e["error"] for e in payload["errors"])
+        print("errors", len(payload["errors"]), dict(codes), [e["name"] for e in payload["errors"][:6]], flush=True)
+    if payload["ok"] * 2 < payload["total"]:
+        # A mostly empty snapshot must not replace the last good one (the site went blank on 2026-09-05).
+        print("too few places, not publishing", flush=True)
+        raise SystemExit(3)
 
 
 if __name__ == "__main__":

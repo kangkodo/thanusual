@@ -1,43 +1,42 @@
 name: collect
 on:
   workflow_dispatch:
+    inputs:
+      deadline:
+        description: "Seconds to keep polling. 60 = one-cycle smoke test, no successor queued."
+        default: "19800"
   schedule:
-    - cron: "3,13,23,33,43,53 * * * *"
+    - cron: "37 * * * *"   # off the top-of-hour surge, when GitHub drops queued schedules
 permissions:
   contents: write
+  actions: write   # the run queues its own successor
+# One run polls for ~5h30m (scripts/poll.sh). The successor is queued by the last
+# step and by the hourly cron; GitHub keeps one pending run per group and cancels
+# older pending ones. A manual dispatch while a run is active waits its turn; to
+# pick up a collector fix now, cancel the running job in Actions.
+concurrency:
+  group: collect
+  cancel-in-progress: false
 jobs:
   collect:
     runs-on: ubuntu-latest
+    timeout-minutes: 355
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Fetch 121 places
-        env:
-          SEOUL_API_KEY: ${{ secrets.SEOUL_API_KEY }}
-        run: python scripts/collect.py --out current.json
-      - name: Fetch street layer
-        env:
-          SEOUL_API_KEY: ${{ secrets.SEOUL_API_KEY }}
-        continue-on-error: true
-        run: python scripts/collect_street.py --out street.json
       - uses: actions/checkout@v4
         with:
           ref: data
           path: data-branch
-      - name: Publish snapshots to data branch
-        run: |
-          cp current.json data-branch/current.json
-          if [ -f street.json ]; then cp street.json data-branch/street.json; fi
-          cd data-branch
-          git config user.name "thanusual-bot"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add current.json
-          if [ -f street.json ]; then git add street.json; fi
-          if git diff --staged --quiet; then
-            echo "no change"
-          else
-            git commit -m "data: refresh current.json"
-            git push
-          fi
+      - name: Poll 121 places every 10 minutes and publish to data branch
+        env:
+          SEOUL_API_KEY: ${{ secrets.SEOUL_API_KEY }}
+          DEADLINE: ${{ inputs.deadline || '19800' }}
+        run: bash scripts/poll.sh
+      - name: Queue the next run
+        if: success() && (github.event_name == 'schedule' || inputs.deadline == '19800')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run collect.yml --ref main
