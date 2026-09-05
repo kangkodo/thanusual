@@ -1,3 +1,5 @@
+import { defaultLayerState } from "./lib/layers.js";
+
 export const CATS = [
   ["전체", "전체"],
   ["인구밀집지역", "인구밀집"],
@@ -14,7 +16,16 @@ export const DATA_URLS = [
 ];
 
 export const $ = (id) => document.getElementById(id);
-export const state = { cat: "전체", data: null, view: "list", selected: null, focus: false };
+export const state = {
+  cat: "전체",
+  q: "",
+  data: null,
+  selected: null,
+  focus: false,
+  layers: defaultLayerState(),
+  layerData: {},
+  dongGeo: null,
+};
 
 export const fmt = (n) => (n == null || Number.isNaN(n) ? "—" : n.toLocaleString("ko-KR"));
 
@@ -30,6 +41,13 @@ export function rowsOf(data, cat) {
   return (data.places || [])
     .filter((p) => p.state === "fresh" && (cat === "전체" || p.category === cat))
     .sort((a, b) => (RANK[b.level] || 0) - (RANK[a.level] || 0) || (b.mid || 0) - (a.mid || 0));
+}
+
+export function visibleRows(data, cat, q) {
+  const rows = rowsOf(data, cat);
+  const needle = String(q || "").trim();
+  if (!needle) return rows;
+  return rows.filter((p) => p.name.includes(needle));
 }
 
 export function newer(a, b) {

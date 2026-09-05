@@ -1,5 +1,6 @@
-import { $, CATS, DATA_URLS, el, fmt, later, newer, rowsOf, state } from "./shared.js";
+import { $, CATS, DATA_URLS, el, fmt, later, newer, visibleRows, state } from "./shared.js";
 import { setMapPickHandler, syncMap } from "./map.js";
+import { DONG_GEO_URL, LAYERS, layerUrls } from "./lib/layers.js";
 
 function renderTabs() {
   const nav = $("tabs");
@@ -24,34 +25,103 @@ function renderTabs() {
   }
 }
 
-function renderViews() {
-  const nav = $("views");
-  if (!nav.dataset.ready) {
-    nav.addEventListener("click", (e) => {
-      const btn = e.target.closest("button");
-      if (!btn || btn.disabled) return;
-      if (btn.dataset.view === "map") {
-        enterMap();
-        render();
+function bindSearch() {
+  const form = $("place-search");
+  if (!form || form.dataset.ready) return;
+  form.addEventListener("submit", (e) => e.preventDefault());
+  form.addEventListener("input", (e) => {
+    const input = e.target;
+    if (!(input instanceof HTMLInputElement) || input.id !== "q") return;
+    state.q = input.value;
+    render();
+  });
+  form.dataset.ready = "1";
+}
+
+function bindLayers() {
+  const form = $("layers");
+  if (!form || form.dataset.ready) return;
+  for (const layer of LAYERS) {
+    const label = el("label", "layer");
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.name = "layer";
+    input.value = layer.id;
+    input.checked = Boolean(state.layers[layer.id]);
+    const text = el("span", "layer-text");
+    text.append(el("span", "layer-name", layer.label), el("span", "layer-blurb", layer.blurb));
+    label.append(input, text);
+    form.append(label);
+  }
+  form.addEventListener("change", async (e) => {
+    const input = e.target;
+    if (!(input instanceof HTMLInputElement) || input.name !== "layer") return;
+    const id = input.value;
+    if (input.checked) {
+      const ok = await ensureLayer(id);
+      if (!ok) {
+        input.checked = false;
+        state.layers[id] = false;
+        const note = $("layer-note");
+        if (note) {
+          note.hidden = false;
+          note.textContent = "이 레이어 자료가 아직 없습니다. 수집이 돌면 켜집니다.";
+        }
         return;
       }
-      leaveMap();
-      render();
-      window.scrollTo({ top: listScrollY, behavior: "instant" });
-    });
-    nav.dataset.ready = "1";
+    }
+    state.layers[id] = input.checked;
+    updateLayerNote();
+    syncMap();
+  });
+  form.dataset.ready = "1";
+}
+
+function updateLayerNote() {
+  const note = $("layer-note");
+  if (!note) return;
+  const bits = [];
+  const living = state.layerData.dong;
+  if (state.layers.dong && living?.ymd) {
+    bits.push(
+      `동네는 ${living.ymd.slice(0, 4)}.${living.ymd.slice(4, 6)}.${living.ymd.slice(6, 8)} ${living.tt}시 생활인구입니다.`,
+    );
   }
+  if (state.layers.metro && state.layerData.metro?.month) {
+    bits.push(`지하철은 ${state.layerData.metro.month} 승하차입니다.`);
+  }
+  if (state.layers.street && state.layerData.street) {
+    bits.push("따릉이는 확대하면 보입니다.");
+  }
+  note.hidden = !bits.length;
+  note.textContent = bits.join(" ");
 }
 
-let listScrollY = 0;
-
-function enterMap() {
-  if (state.view === "list") listScrollY = window.scrollY;
-  state.view = "map";
+async function ensureLayer(id) {
+  const spec = LAYERS.find((layer) => layer.id === id);
+  if (!spec) return false;
+  if (!spec.file) return true;
+  if (!state.layerData[id]) {
+    const data = await loadFirst(layerUrls(spec.file));
+    if (!data) return false;
+    state.layerData[id] = data;
+  }
+  if (id === "dong" && !state.dongGeo) {
+    state.dongGeo = await loadJson(DONG_GEO_URL).catch(() => null);
+    if (!state.dongGeo) return false;
+  }
+  return true;
 }
 
-function leaveMap() {
-  state.view = "list";
+function bindSheet() {
+  const btn = $("sheet-handle");
+  if (!btn || btn.dataset.ready) return;
+  btn.addEventListener("click", () => {
+    const open = document.body.classList.toggle("map-sheet-open");
+    btn.setAttribute("aria-expanded", String(open));
+    syncMap();
+  });
+  btn.dataset.ready = "1";
 }
 
 function bindBoard() {
@@ -62,17 +132,18 @@ function bindBoard() {
     if (!li || !li.dataset.name) return;
     state.selected = li.dataset.name;
     state.focus = true;
-    enterMap();
     render();
-    $("map").focus({ preventScroll: true });
+    $("map")?.focus({ preventScroll: true });
   });
   board.dataset.ready = "1";
 }
 
 function render() {
   renderTabs();
-  renderViews();
+  bindSearch();
+  bindSheet();
   bindBoard();
+  bindLayers();
   const data = state.data;
   const stamp = $("stamp");
   const banner = $("banner");
@@ -86,16 +157,17 @@ function render() {
   stamp.replaceChildren(el("time", "stamp-time", data.source_at || data.generated_at), el("span", "stamp-count", `${data.ok}/${data.total}곳`));
   banner.hidden = !data.warming;
   banner.textContent = data.warming ? "평소 대비 %는 같은 요일·시간대 자료가 3주 쌓인 뒤 표시됩니다. 지금은 인원 순입니다." : "";
-  const rows = rowsOf(data, state.cat);
+  const rows = visibleRows(data, state.cat, state.q);
   if (!rows.length) {
-    board.replaceChildren(el("li", "empty", "이 분류에 장소가 없습니다."));
+    const empty = state.q.trim() ? "이 이름에 맞는 장소가 없습니다." : "이 분류에 장소가 없습니다.";
+    board.replaceChildren(el("li", "empty", empty));
     syncMap();
     return;
   }
   const frag = document.createDocumentFragment();
   const showCat = state.cat === "전체";
   rows.forEach((place, i) => {
-    const li = el("li", "row");
+    const li = el("li", place.name === state.selected ? "row is-selected" : "row");
     li.dataset.name = place.name;
     const btn = el("button", "row-btn");
     btn.type = "button";
@@ -116,13 +188,12 @@ function render() {
 }
 
 setMapPickHandler(() => {
-  leaveMap();
   render();
   const name = state.selected;
   if (!name) return;
   const row = $("board").querySelector(`[data-name="${CSS.escape(name)}"]`);
   if (!row) return;
-  row.scrollIntoView({ block: "center" });
+  row.scrollIntoView({ block: "nearest" });
   row.querySelector(".row-btn")?.focus({ preventScroll: true });
 });
 
@@ -130,6 +201,11 @@ async function loadJson(url) {
   const res = await fetch(`${url}${url.includes("?") ? "&" : "?"}t=${Date.now()}`, { cache: "no-store" });
   if (!res.ok) throw new Error(String(res.status));
   return res.json();
+}
+
+async function loadFirst(urls) {
+  const hits = await Promise.all(urls.map((url) => loadJson(url).catch(() => null)));
+  return hits.reduce(newer, null);
 }
 
 async function load() {

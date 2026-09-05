@@ -17,17 +17,24 @@ jobs:
         env:
           SEOUL_API_KEY: ${{ secrets.SEOUL_API_KEY }}
         run: python scripts/collect.py --out current.json
+      - name: Fetch street layer
+        env:
+          SEOUL_API_KEY: ${{ secrets.SEOUL_API_KEY }}
+        continue-on-error: true
+        run: python scripts/collect_street.py --out street.json
       - uses: actions/checkout@v4
         with:
           ref: data
           path: data-branch
-      - name: Publish current.json to data branch
+      - name: Publish snapshots to data branch
         run: |
           cp current.json data-branch/current.json
+          if [ -f street.json ]; then cp street.json data-branch/street.json; fi
           cd data-branch
           git config user.name "thanusual-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add current.json
+          if [ -f street.json ]; then git add street.json; fi
           if git diff --staged --quiet; then
             echo "no change"
           else

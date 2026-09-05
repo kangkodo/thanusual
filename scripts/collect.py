@@ -5,38 +5,15 @@ from __future__ import annotations
 import argparse
 import datetime
 import json
-import os
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path
 
+from seoul_api import UA, load_key
+
 ROOT = Path(__file__).resolve().parents[1]
-UA = {"User-Agent": "thanusual/0.1 (https://thanusual.pages.dev)"}
-
-
-def load_key() -> str:
-    env = os.environ.get("SEOUL_API_KEY", "").strip().strip('"').strip("'")
-    if env:
-        return env
-    for path in (
-        ROOT.parent / "secrets" / "seoul.env",
-        ROOT / "secrets" / "seoul.env",
-        Path.home() / ".config" / "thanusual" / "seoul.env",
-    ):
-        if not path.is_file():
-            continue
-        for line in path.read_text(encoding="utf-8").splitlines():
-            line = line.strip()
-            if not line or line.startswith("#") or "=" not in line:
-                continue
-            k, _, v = line.partition("=")
-            if k.strip() == "SEOUL_API_KEY":
-                val = v.strip().strip('"').strip("'")
-                if val:
-                    return val
-    raise SystemExit("SEOUL_API_KEY missing")
 
 
 def parse_time(value: str | None) -> datetime.datetime | None:

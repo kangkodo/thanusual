@@ -1,0 +1,51 @@
+name: collect-daily
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "20 16 * * *"
+permissions:
+  contents: write
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Fetch living
+        env:
+          SEOUL_API_KEY: ${{ secrets.SEOUL_API_KEY }}
+        continue-on-error: true
+        run: python scripts/collect_living.py --out living.json
+      - name: Fetch metro
+        env:
+          SEOUL_API_KEY: ${{ secrets.SEOUL_API_KEY }}
+        continue-on-error: true
+        run: python scripts/collect_metro.py --out metro.json
+      - name: Fetch today
+        env:
+          SEOUL_API_KEY: ${{ secrets.SEOUL_API_KEY }}
+        continue-on-error: true
+        run: python scripts/collect_today.py --out today.json
+      - uses: actions/checkout@v4
+        with:
+          ref: data
+          path: data-branch
+      - name: Publish daily snapshots to data branch
+        run: |
+          for f in living.json metro.json today.json; do
+            if [ -f "$f" ]; then cp "$f" data-branch/; fi
+          done
+          cd data-branch
+          git config user.name "thanusual-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          for f in living.json metro.json today.json; do
+            if [ -f "$f" ]; then git add "$f"; fi
+          done
+          if git diff --staged --quiet; then
+            echo "no change"
+          else
+            git commit -m "data: refresh living metro today"
+            git push
+          fi

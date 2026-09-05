@@ -2,15 +2,17 @@
 
 Live ranking of 121 Seoul citydata hotspots: how crowded now vs usual. Production: https://thanusual.pages.dev
 
-First screen is a ranked list, not a map. Copy: name, congestion grade, people midpoint, 2h-later people %. 「평소 대비 %」 waits until n≥3 same weekday/10-min slot.
+First screen is a ranked list in a side panel (phone: bottom sheet). The map is the canvas behind it. Copy in each row: name, congestion grade, people midpoint, 2h-later people %. 「평소 대비 %」 waits until n≥3 same weekday/10-min slot.
 
 ## Product locks
 
-- 121 places, not 140. Official `citydata_ppltn` only. Do not use unofficial `/SeoulRtd/api/ppltn`.
-- Collect via GitHub Actions (HTTP :8088). Workers `fetch()` ignores that port.
-- Snapshot lives on the `data` branch as `current.json`. Pages production branch is `main`. Do not build `data` as production.
-- Sample Seoul key always returns 광화문·덕수궁. Official key required for 121.
+- 121 places, not 140, for the **지금** layer. Official `citydata_ppltn` only. Do not use unofficial `/SeoulRtd/api/ppltn`.
+- Extra map layers are official Seoul Open Data Plaza feeds collected the same way (GitHub Actions, HTTP `:8088`). Workers `fetch()` ignores that port.
+- Snapshot lives on the `data` branch: `current.json` (지금), `living.json` (동네), `metro.json` (지하철), `street.json` (거리), `today.json` (오늘). Pages production branch is `main`. Do not build `data` as production.
+- Sample Seoul key always returns 광화문·덕수궁 for citydata. Official key required for 121 and for the extra layers.
 - Secrets: never read, grep, or quote `secrets/`, `.env`, `*.key`. Load `../secrets/seoul.env` in code only.
+- Stay free. No SKT Puzzle / TMAP / Kakao crowding APIs. No 50m live grid (not published). Live in-car subway crowding is not a free official feed; the **지하철** layer is monthly station 승하차, labeled as such.
+- 동네 polygons are Seoul-only `vendor/seoul-dongs.geojson` from SGIS via admdongkor (공공누리 1유형 / CC BY 4.0). Attribute SGIS.
 
 ## Map
 
@@ -22,7 +24,7 @@ First screen is a ranked list, not a map. Copy: name, congestion grade, people m
 - There is **no rate limit** on `/tiles/*` today. WAF rate-limiting rules need a zone, and a bare `*.pages.dev` host has none. Options when needed: attach a custom domain (then a WAF rule), or a code-side limiter. Every `/tiles/*` hit, including 400/403, counts toward the Pages Functions daily cap. Watch the Functions metrics after launch.
 - Bump `TILE_CACHE_VERSION` in `lib/tiles.js` when tile headers or style change; pages.dev has no cache purge.
 - Optional later: Naver place search for coordinates, then plot on the Leaflet map. Do not put Naver REST keys in git or in the browser bundle.
-- Custom pins and density viz are in scope. Rewriting the ranking list is out of scope unless a later /office-hours says otherwise.
+- Custom pins and density viz are in scope. Place names appear at zoom ≥13 as plain map labels (Leaflet tooltip, no extra library). City zoom stays unlabeled. One canvas: map behind, ranking in a left rail (desktop) or bottom sheet (phone), with name search. Pin click selects the row. There is no separate list-only page.
 
 ## Design
 
