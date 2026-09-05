@@ -1,5 +1,6 @@
 import { $, CATS, DATA_URLS, el, fmt, later, newer, visibleRows, state } from "./shared.js";
 import { setMapPickHandler, syncMap } from "./map.js";
+import { DONG_GEO_URL, LAYERS, layerUrls } from "./lib/layers.js";
 
 function renderTabs() {
   const nav = $("tabs");
@@ -37,6 +38,81 @@ function bindSearch() {
   form.dataset.ready = "1";
 }
 
+function bindLayers() {
+  const form = $("layers");
+  if (!form || form.dataset.ready) return;
+  for (const layer of LAYERS) {
+    const label = el("label", "layer");
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.name = "layer";
+    input.value = layer.id;
+    input.checked = Boolean(state.layers[layer.id]);
+    const text = el("span", "layer-text");
+    text.append(el("span", "layer-name", layer.label), el("span", "layer-blurb", layer.blurb));
+    label.append(input, text);
+    form.append(label);
+  }
+  form.addEventListener("change", async (e) => {
+    const input = e.target;
+    if (!(input instanceof HTMLInputElement) || input.name !== "layer") return;
+    const id = input.value;
+    if (input.checked) {
+      const ok = await ensureLayer(id);
+      if (!ok) {
+        input.checked = false;
+        state.layers[id] = false;
+        const note = $("layer-note");
+        if (note) {
+          note.hidden = false;
+          note.textContent = "이 레이어 자료가 아직 없습니다. 수집이 돌면 켜집니다.";
+        }
+        return;
+      }
+    }
+    state.layers[id] = input.checked;
+    updateLayerNote();
+    syncMap();
+  });
+  form.dataset.ready = "1";
+}
+
+function updateLayerNote() {
+  const note = $("layer-note");
+  if (!note) return;
+  const bits = [];
+  const living = state.layerData.dong;
+  if (state.layers.dong && living?.ymd) {
+    bits.push(
+      `동네는 ${living.ymd.slice(0, 4)}.${living.ymd.slice(4, 6)}.${living.ymd.slice(6, 8)} ${living.tt}시 생활인구입니다.`,
+    );
+  }
+  if (state.layers.metro && state.layerData.metro?.month) {
+    bits.push(`지하철은 ${state.layerData.metro.month} 승하차입니다.`);
+  }
+  if (state.layers.street && state.layerData.street) {
+    bits.push("따릉이는 확대하면 보입니다.");
+  }
+  note.hidden = !bits.length;
+  note.textContent = bits.join(" ");
+}
+
+async function ensureLayer(id) {
+  const spec = LAYERS.find((layer) => layer.id === id);
+  if (!spec) return false;
+  if (!spec.file) return true;
+  if (!state.layerData[id]) {
+    const data = await loadFirst(layerUrls(spec.file));
+    if (!data) return false;
+    state.layerData[id] = data;
+  }
+  if (id === "dong" && !state.dongGeo) {
+    state.dongGeo = await loadJson(DONG_GEO_URL).catch(() => null);
+    if (!state.dongGeo) return false;
+  }
+  return true;
+}
+
 function bindSheet() {
   const btn = $("sheet-handle");
   if (!btn || btn.dataset.ready) return;
@@ -67,6 +143,7 @@ function render() {
   bindSearch();
   bindSheet();
   bindBoard();
+  bindLayers();
   const data = state.data;
   const stamp = $("stamp");
   const banner = $("banner");
@@ -124,6 +201,11 @@ async function loadJson(url) {
   const res = await fetch(`${url}${url.includes("?") ? "&" : "?"}t=${Date.now()}`, { cache: "no-store" });
   if (!res.ok) throw new Error(String(res.status));
   return res.json();
+}
+
+async function loadFirst(urls) {
+  const hits = await Promise.all(urls.map((url) => loadJson(url).catch(() => null)));
+  return hits.reduce(newer, null);
 }
 
 async function load() {

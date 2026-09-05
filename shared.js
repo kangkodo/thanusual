@@ -1,3 +1,5 @@
+import { defaultLayerState } from "./lib/layers.js";
+
 export const CATS = [
   ["전체", "전체"],
   ["인구밀집지역", "인구밀집"],
@@ -14,7 +16,16 @@ export const DATA_URLS = [
 ];
 
 export const $ = (id) => document.getElementById(id);
-export const state = { cat: "전체", q: "", data: null, selected: null, focus: false };
+export const state = {
+  cat: "전체",
+  q: "",
+  data: null,
+  selected: null,
+  focus: false,
+  layers: defaultLayerState(),
+  layerData: {},
+  dongGeo: null,
+};
 
 export const fmt = (n) => (n == null || Number.isNaN(n) ? "—" : n.toLocaleString("ko-KR"));
 

@@ -467,4 +467,61 @@ main {
 .leaflet-bar a:hover, .leaflet-bar a:focus { background: var(--surface-secondary); color: var(--text); }
 .leaflet-bar a.leaflet-disabled { background: var(--surface-secondary); color: var(--text-secondary); }
 
+.layer-stack {
+  position: absolute;
+  z-index: 1000;
+  top: var(--space-3);
+  left: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-width: min(16rem, calc(100% - 5.5rem));
+  pointer-events: none;
+}
+.layers {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-small);
+  background: var(--surface);
+  pointer-events: auto;
+}
+.layer {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-height: 44px;
+  cursor: pointer;
+  font-size: var(--type-compact);
+  line-height: var(--leading-compact);
+}
+.layer input {
+  flex: 0 0 auto;
+  margin: 0;
+}
+.layer-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.layer-name { font-weight: var(--weight-medium); }
+.layer-blurb {
+  color: var(--text-secondary);
+  font-size: var(--type-metadata);
+  line-height: var(--leading-metadata);
+}
+.layer-note {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-small);
+  background: var(--surface);
+  color: var(--text-secondary);
+  font-size: var(--type-metadata);
+  line-height: var(--leading-metadata);
+  pointer-events: auto;
+}
+
 :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
