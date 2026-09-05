@@ -18,7 +18,7 @@ publish() (
   # collect-daily pushes living/metro/today to the same branch; start from its tip every time.
   git fetch -q origin data && git reset -q --hard FETCH_HEAD || return 1
   # Fold this sample into the 평소 baseline and stamp current.json with each place's usual value.
-  python ../scripts/baseline.py --current ../current.json --baseline baseline.json || echo "baseline failed"
+  python ../scripts/baseline.py --current ../current.json --baseline baseline.json || { echo "baseline failed"; touch ../baseline-failed; }
   cp ../current.json current.json
   [ -f ../street.json ] && cp ../street.json street.json
   git add -A .
@@ -27,7 +27,7 @@ publish() (
     return 0
   fi
   # [Skip CI]: Cloudflare Pages otherwise builds a preview for every data push (500 builds/month free cap).
-  git commit -q -m "data: refresh current.json [Skip CI]" && git push -q origin HEAD:data || { echo "push failed, retry next cycle"; return 1; }
+  git commit -q -m "[Skip CI] data: refresh current.json" && git push -q origin HEAD:data || { echo "push failed, retry next cycle"; return 1; }
 )
 
 cycle=0
@@ -47,4 +47,5 @@ while (( SECONDS < DEADLINE )); do
   sleep $(( INTERVAL - $(date +%s) % INTERVAL ))
 done
 echo "published $published of $cycle cycles"
+[ -f baseline-failed ] && echo "::warning::baseline.py failed in at least one cycle; 평소 samples were not recorded"
 (( published > 0 ))   # a run that published nothing goes red so GitHub emails about it

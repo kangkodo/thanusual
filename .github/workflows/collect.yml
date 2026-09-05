@@ -11,9 +11,11 @@ permissions:
   contents: write
   actions: write   # the run queues its own successor
 # One run polls for ~5h30m (scripts/poll.sh). The successor is queued by the last
-# step and by the hourly cron; GitHub keeps one pending run per group and cancels
-# older pending ones. A manual dispatch while a run is active waits its turn; to
-# pick up a collector fix now, cancel the running job in Actions.
+# step and by the hourly cron; GitHub keeps one pending run per group and the
+# newest pending run replaces older ones. So a manual dispatch while a run is
+# active is replaced by the next fire, and a pending run is pinned to the commit
+# it was created from. To apply a collector fix now: dispatch first (pins main),
+# then cancel the running run. To stop collecting: disable this workflow.
 concurrency:
   group: collect
   cancel-in-progress: false
@@ -36,7 +38,7 @@ jobs:
           DEADLINE: ${{ inputs.deadline || '19800' }}
         run: bash scripts/poll.sh
       - name: Queue the next run
-        if: success() && (github.event_name == 'schedule' || inputs.deadline == '19800')
+        if: success() && (github.event_name == 'schedule' || !inputs.deadline || inputs.deadline == '19800')
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh workflow run collect.yml --ref main

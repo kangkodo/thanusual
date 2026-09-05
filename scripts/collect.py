@@ -170,6 +170,11 @@ def main() -> None:
     places = json.loads(Path(args.places).read_text(encoding="utf-8"))
     key = load_key()
     payload = collect(places, key)
+    if payload["ok"] * 2 < payload["total"]:
+        # A mostly empty snapshot must not replace the last good one (the site went blank on 2026-09-05).
+        codes = collections.Counter(e["error"] for e in payload["errors"])
+        print(f"too few places ok {payload['ok']}/{payload['total']} {dict(codes)}, not writing", flush=True)
+        raise SystemExit(3)
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(payload, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
@@ -182,10 +187,6 @@ def main() -> None:
     if payload["errors"]:
         codes = collections.Counter(e["error"] for e in payload["errors"])
         print("errors", len(payload["errors"]), dict(codes), [e["name"] for e in payload["errors"][:6]], flush=True)
-    if payload["ok"] * 2 < payload["total"]:
-        # A mostly empty snapshot must not replace the last good one (the site went blank on 2026-09-05).
-        print("too few places, not publishing", flush=True)
-        raise SystemExit(3)
 
 
 if __name__ == "__main__":

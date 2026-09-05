@@ -17,7 +17,6 @@ from pathlib import Path
 SLOTS = 144
 WEEK = 7 * SLOTS
 MIN_N = 3
-BIN_SLOTS = 1  # ponytail: 1 = weekday x 10 min (README). 3 = weekday x 30 min, fills 3x faster; storage stays 10 min.
 
 
 def parse_time(value):
@@ -34,13 +33,8 @@ def slot_index(dt: datetime.datetime) -> int:
 
 
 def usual_for(entry: dict, idx: int) -> dict:
-    day0 = idx - idx % SLOTS
-    half = BIN_SLOTS // 2
-    n = total = 0
-    for j in range(idx - half, idx + half + 1):
-        if day0 <= j < day0 + SLOTS:
-            n += entry["n"][j]
-            total += entry["sum"][j]
+    # ponytail: one 10-minute slot per README. A wider bin needs per-slot dates to keep today's neighbours out.
+    n, total = entry["n"][idx], entry["sum"][idx]
     return {"n": n, "mid": round(total / n) if n >= MIN_N else None}
 
 
@@ -73,8 +67,7 @@ def update(baseline: dict, current: dict) -> dict:
             entry["sum"][idx] += entry["last_mid"]
         if place["usual"]["mid"] is not None:
             ready += 1
-    total = len(current.get("places", [])) or 1
-    current["warming"] = ready < total / 2
+    # warming stays as collect.py set it until the client can render usual; usual_ready is the diagnostic.
     current["usual_ready"] = ready
     return current
 

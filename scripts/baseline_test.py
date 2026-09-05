@@ -21,7 +21,7 @@ class BaselineTest(unittest.TestCase):
                 self.assertEqual(usual["n"], week)
             else:
                 self.assertEqual(usual, {"n": 3, "mid": 1200})  # mean of the three past weeks, not of 9999
-                self.assertFalse(cur["warming"])
+                self.assertEqual(cur["usual_ready"], 1)
 
     def test_one_sample_per_slot_per_day(self):
         b = {}
@@ -41,7 +41,7 @@ class BaselineTest(unittest.TestCase):
             {"name": "B", "state": "fresh", "mid": 0, "source_at": "2026-09-07 19:05"},
         ]})
         self.assertEqual(b["places"], {})
-        self.assertTrue(cur["warming"])
+        self.assertEqual(cur["usual_ready"], 0)
         self.assertIsNone(cur["places"][0]["usual"])
 
     def test_slot_index_uses_weekday_and_ten_minutes(self):
