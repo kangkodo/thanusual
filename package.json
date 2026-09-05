@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test '*.test.js' 'lib/*.test.js' 'functions/**/*.test.js'",
+    "test": "node --test '*.test.js' 'lib/*.test.js' 'functions/**/*.test.js' && python3 -m unittest discover -q -s scripts -p '*_test.py'",
     "dev": "wrangler pages dev ."
   }
 }

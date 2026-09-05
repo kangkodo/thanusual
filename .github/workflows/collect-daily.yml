@@ -46,6 +46,6 @@ jobs:
           if git diff --staged --quiet; then
             echo "no change"
           else
-            git commit -m "data: refresh living metro today"
-            git push
+            git commit -m "[Skip CI] data: refresh living metro today"
+            git pull -q --rebase origin data && git push
           fi
