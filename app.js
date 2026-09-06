@@ -111,7 +111,8 @@ async function ensureLayer(id) {
     state.layerData[id] = data;
   }
   if (id === "dong" && !state.dongGeo) {
-    state.dongGeo = await loadJson(DONG_GEO_URL).catch(() => null);
+    // Static vendored file: let the browser cache it.
+    state.dongGeo = await fetch(DONG_GEO_URL).then((r) => (r.ok ? r.json() : null)).catch(() => null);
     if (!state.dongGeo) return false;
   }
   return true;
@@ -285,9 +286,16 @@ async function loadJson(url) {
   return res.json();
 }
 
+// Layer files are big (street.json ~300KB) and the first host is the freshest, so stop at the first success.
 async function loadFirst(urls) {
-  const hits = await Promise.all(urls.map((url) => loadJson(url).catch(() => null)));
-  return hits.reduce(newer, null);
+  for (const url of urls) {
+    try {
+      return await loadJson(url);
+    } catch {
+      // try the next host
+    }
+  }
+  return null;
 }
 
 let loading = false;
