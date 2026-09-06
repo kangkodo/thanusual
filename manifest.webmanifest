@@ -1,0 +1,13 @@
+{
+  "name": "평소보다",
+  "short_name": "평소보다",
+  "start_url": "/",
+  "display": "standalone",
+  "lang": "ko",
+  "background_color": "#fff",
+  "theme_color": "#fff",
+  "icons": [
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}
