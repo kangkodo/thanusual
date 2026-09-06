@@ -58,17 +58,18 @@ def collect(key: str) -> dict:
             if len(code) != 8 or spop is None:
                 continue
             pops[code] = round(spop)
-        slices[tt] = pops
+        if pops:
+            slices[tt] = pops
+    if not slices:
+        raise SystemExit("living slices had no usable rows")
     # Older clients read one slice (tt + dongs): give them the one nearest the collection hour.
     near = f"{(now.hour // 3) * 3:02d}"
     tt = near if near in slices else sorted(slices)[0]
     dongs = [{"code": code, "spop": spop} for code, spop in slices[tt].items()]
-    days = (now.date() - datetime.datetime.strptime(ymd, "%Y%m%d").date()).days
     return {
         "generated_at": now.strftime("%Y-%m-%d %H:%M:%S"),
         "ymd": ymd,
         "tt": tt,
-        "lag": f"{days}일 전",
         "ok": len(dongs),
         "dongs": dongs,
         "slices": slices,

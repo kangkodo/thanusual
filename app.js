@@ -223,6 +223,7 @@ function render() {
   bindSheet();
   bindBoard();
   bindLayers();
+  updateLayerNote(); // the note names the hour the map is drawing; keep them in step as time passes
   const data = state.data;
   const banner = $("banner");
   const board = $("board");
