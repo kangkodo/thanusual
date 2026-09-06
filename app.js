@@ -1,6 +1,10 @@
-import { $, CATS, DATA_URLS, el, fmt, later, newer, visibleRows, state } from "./shared.js";
+import { $, CATS, DATA_URLS, ageMinutes, ageText, el, fmt, later, newer, summaryText, usualPct, usualText, visibleRows, state } from "./shared.js";
 import { setMapPickHandler, syncMap } from "./map.js";
 import { DONG_GEO_URL, LAYERS, layerUrls } from "./lib/layers.js";
+
+const STALE_MIN = 60;
+const REFRESH_MS = 5 * 60 * 1000;
+const PHONE = "(max-width: 47.99rem)";
 
 function renderTabs() {
   const nav = $("tabs");
@@ -113,15 +117,45 @@ async function ensureLayer(id) {
   return true;
 }
 
+function setSheet(open) {
+  document.body.classList.toggle("map-sheet-open", open);
+  $("sheet-handle")?.setAttribute("aria-expanded", String(open));
+}
+
 function bindSheet() {
   const btn = $("sheet-handle");
   if (!btn || btn.dataset.ready) return;
   btn.addEventListener("click", () => {
-    const open = document.body.classList.toggle("map-sheet-open");
-    btn.setAttribute("aria-expanded", String(open));
+    setSheet(!document.body.classList.contains("map-sheet-open"));
     syncMap();
   });
   btn.dataset.ready = "1";
+}
+
+// Selection lives in the hash so a place can be shared: /#p=이태원역
+function select(name, focus) {
+  state.selected = name;
+  state.focus = focus;
+  try {
+    history.replaceState(null, "", name ? `#p=${encodeURIComponent(name)}` : location.pathname + location.search);
+  } catch {
+    // history can be unavailable in odd embeds; the selection still works.
+  }
+}
+
+function readHash() {
+  const m = /[#&]p=([^&]+)/.exec(location.hash);
+  if (!m) return;
+  let name;
+  try {
+    name = decodeURIComponent(m[1]);
+  } catch {
+    return;
+  }
+  if ((state.data?.places || []).some((p) => p.name === name)) {
+    state.selected = name;
+    state.focus = true;
+  }
 }
 
 function bindBoard() {
@@ -130,12 +164,39 @@ function bindBoard() {
   board.addEventListener("click", (e) => {
     const li = e.target.closest(".row");
     if (!li || !li.dataset.name) return;
-    state.selected = li.dataset.name;
-    state.focus = true;
+    select(li.dataset.name, true);
+    // On the phone the list covers the map; tapping a row means "show me", so give the map back.
+    if (window.matchMedia(PHONE).matches) setSheet(false);
     render();
     $("map")?.focus({ preventScroll: true });
   });
   board.dataset.ready = "1";
+}
+
+function renderStamp() {
+  const data = state.data;
+  const stamp = $("stamp");
+  const sheetStamp = $("sheet-stamp");
+  const summary = $("sheet-summary");
+  if (!data) {
+    stamp.textContent = "데이터를 불러오지 못했습니다.";
+    if (sheetStamp) sheetStamp.textContent = "데이터를 불러오지 못했습니다.";
+    return;
+  }
+  const at = data.source_at || data.generated_at || "";
+  const age = ageMinutes(at);
+  const bits = [`${at.slice(11, 16)} 기준`];
+  if (age != null) bits.push(ageText(age));
+  bits.push(`${data.ok}/${data.total}곳`);
+  const text = bits.join(" · ");
+  const stale = age != null && age > STALE_MIN;
+  const time = el("time", "stamp-time", text);
+  if (at) time.dateTime = `${at.slice(0, 16).replace(" ", "T")}+09:00`;
+  const parts = [time, el("span", "stamp-summary", summaryText(data))];
+  if (stale) parts.push(el("span", "stamp-stale", "자료가 오래됐습니다. 수집이 밀리고 있습니다."));
+  stamp.replaceChildren(...parts);
+  if (sheetStamp) sheetStamp.textContent = stale ? `${text} · 자료가 오래됐습니다` : text;
+  if (summary) summary.textContent = summaryText(data);
 }
 
 function render() {
@@ -145,21 +206,24 @@ function render() {
   bindBoard();
   bindLayers();
   const data = state.data;
-  const stamp = $("stamp");
   const banner = $("banner");
   const board = $("board");
+  renderStamp();
   if (!data) {
-    stamp.textContent = "데이터를 불러오지 못했습니다.";
     board.replaceChildren(el("li", "empty", "목록을 읽지 못했습니다."));
     syncMap();
     return;
   }
-  stamp.replaceChildren(el("time", "stamp-time", data.source_at || data.generated_at), el("span", "stamp-count", `${data.ok}/${data.total}곳`));
-  banner.hidden = !data.warming;
-  banner.textContent = data.warming ? "평소 대비 %는 같은 요일·시간대 자료가 3주 쌓인 뒤 표시됩니다. 지금은 인원 순입니다." : "";
+  const warming = data.warming !== false;
+  banner.hidden = !warming;
+  banner.textContent = warming
+    ? "평소 대비 %는 같은 요일·같은 30분대 자료가 2주 쌓인 뒤 표시됩니다. 지금은 붐빔 등급 순, 같은 등급은 인원 순입니다."
+    : "";
   const rows = visibleRows(data, state.cat, state.q);
   if (!rows.length) {
-    const empty = state.q.trim() ? "이 이름에 맞는 장소가 없습니다." : "이 분류에 장소가 없습니다.";
+    let empty = "이 분류에 장소가 없습니다.";
+    if (data.ok === 0) empty = "서울시 응답이 없어 보여드릴 자료가 없습니다.";
+    else if (state.q.trim()) empty = "이 이름에 맞는 장소가 없습니다.";
     board.replaceChildren(el("li", "empty", empty));
     syncMap();
     return;
@@ -167,19 +231,26 @@ function render() {
   const frag = document.createDocumentFragment();
   const showCat = state.cat === "전체";
   rows.forEach((place, i) => {
-    const li = el("li", place.name === state.selected ? "row is-selected" : "row");
+    const selected = place.name === state.selected;
+    const li = el("li", selected ? "row is-selected" : "row");
     li.dataset.name = place.name;
     const btn = el("button", "row-btn");
     btn.type = "button";
+    if (selected) btn.setAttribute("aria-current", "true");
     const name = el("span", "name");
     name.append(el("span", "", place.name));
     if (showCat) name.append(el("span", "cat", place.category));
+    const value = el("span", "value");
+    const usual = usualText(usualPct(place));
+    if (usual) value.append(el("span", "usual", usual));
+    value.append(el("span", "count", fmt(place.mid)));
     const meta = el("div", "meta");
-    const lvl = el("span", place.level ? `level lvl-${place.level.replace(/\s+/g, "-")}` : "level", place.level || "—");
+    const lvl = el("span", place.level ? `level lvl-${place.level.replace(/\s+/g, "-")}` : "level", place.level || "등급 없음");
+    const fc = later(place);
     const lat = el("span", "later");
-    lat.append(el("span", "later-label", "2시간 뒤"), el("span", "later-value", later(place).replace(/^2시간 뒤\s*/, "")));
+    lat.append(el("span", "later-label", fc.label), " ", el("span", "later-value", fc.value));
     meta.append(lvl, lat);
-    btn.append(el("span", "rank", String(i + 1)), name, el("span", "people", fmt(place.mid)), meta);
+    btn.append(el("span", "rank", String(i + 1)), name, value, meta);
     li.append(btn);
     frag.append(li);
   });
@@ -188,6 +259,7 @@ function render() {
 }
 
 setMapPickHandler(() => {
+  select(state.selected, false);
   render();
   const name = state.selected;
   if (!name) return;
@@ -208,10 +280,34 @@ async function loadFirst(urls) {
   return hits.reduce(newer, null);
 }
 
+let loading = false;
+
 async function load() {
-  const hits = await Promise.all(DATA_URLS.map((url) => loadJson(url).catch(() => null)));
-  state.data = hits.reduce(newer, null);
-  render();
+  if (loading) return;
+  loading = true;
+  try {
+    const hits = await Promise.all(DATA_URLS.map((url) => loadJson(url).catch(() => null)));
+    const next = hits.reduce(newer, null);
+    const first = !state.data;
+    const changed = Boolean(next) && (!state.data || next.generated_at !== state.data.generated_at);
+    if (changed) state.data = next;
+    if (first) {
+      readHash();
+      render();
+    } else if (changed) {
+      render();
+    }
+  } finally {
+    loading = false;
+  }
 }
 
 load();
+// The data moves every 10 minutes; a tab left open should follow it.
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") load();
+});
+setInterval(load, REFRESH_MS);
+setInterval(() => {
+  if (state.data) renderStamp();
+}, 60 * 1000);

@@ -270,7 +270,7 @@ p, h1, ol { margin: 0; }
 }
 .row-btn:hover { background: var(--surface-secondary); }
 .row-btn:focus-visible { outline-offset: 2px; }
-.rank, .people, .later { font-variant-numeric: tabular-nums; }
+.rank, .value, .later, .usual { font-variant-numeric: tabular-nums; }
 .rank { color: var(--text-secondary); font-size: var(--type-compact); }
 .name {
   display: flex;
@@ -287,7 +287,21 @@ p, h1, ol { margin: 0; }
   font-weight: var(--weight-regular);
   color: var(--text-secondary);
 }
-.people { text-align: right; font-weight: var(--weight-medium); }
+.value {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: right;
+  font-weight: var(--weight-medium);
+  white-space: nowrap;
+}
+.value .count {
+  font-weight: var(--weight-regular);
+  font-size: var(--type-compact);
+  line-height: var(--leading-compact);
+  color: var(--text-secondary);
+}
+.value .count:only-child { font: inherit; color: inherit; }
 .meta {
   grid-column: 2 / -1;
   display: flex;
@@ -300,7 +314,7 @@ p, h1, ol { margin: 0; }
 }
 .lvl-약간-붐빔, .lvl-붐빔 { color: var(--hot); font-weight: var(--weight-semibold); }
 .later { color: var(--text-secondary); }
-.later-label { margin-right: var(--space-1); }
+.stamp-stale { color: var(--text); }
 .row.is-selected .row-btn { background: var(--surface-secondary); }
 .empty {
   padding: var(--space-8) 0;
@@ -398,7 +412,15 @@ main {
     border-radius: 2px;
     background: var(--border);
   }
+  .sheet-summary {
+    color: var(--text);
+    font-size: var(--type-compact);
+    line-height: var(--leading-compact);
+    font-weight: var(--weight-medium);
+  }
+  .sheet-stamp { font-variant-numeric: tabular-nums; }
   .masthead, .foot { display: none; }
+  .tabs button { padding: var(--space-2); }
   .leaflet-bottom { bottom: calc(var(--sheet) + var(--space-2)); }
   .map-status { bottom: calc(var(--sheet) + 2.75rem); }
 }

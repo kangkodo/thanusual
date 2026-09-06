@@ -2,7 +2,7 @@
 
 지금 121곳을 한눈에 비교합니다. 첫 도시 서울. 화면은 [thanusual.pages.dev](https://thanusual.pages.dev).
 
-평소 대비 %는 같은 요일·같은 10분 슬롯이 3주 모이면 붙습니다. 그 전에는 지금 붐빔 순입니다. 이력은 `scripts/baseline.py`가 매 수집마다 `data` 브랜치 `baseline.json`에 요일·10분 슬롯 단위로 쌓고, 각 장소의 평소 값을 `current.json`의 `usual`에 적습니다. 「2시간 뒤」는 인원 예측만 쓰고, 혼잡 등급 문구는 쓰지 않습니다.
+평소 대비 %는 같은 요일·같은 30분대 자료가 2주(슬롯 6개) 모이면 붙고, 그때부터 순위는 평소보다 붐비는 순입니다. 그 전에는 붐빔 등급 순, 같은 등급은 인원 순입니다. 이력은 `scripts/baseline.py`가 매 수집마다 `data` 브랜치 `baseline.json`에 요일·10분 슬롯 단위로 하루 한 샘플씩 쌓고, 오늘 샘플을 뺀 지난 주들의 평균을 `current.json`의 `usual`에 적습니다. 「01시 예측」처럼 예측은 서울시 예측의 정시 시각으로 표기합니다. 예측은 인원만 쓰고, 혼잡 등급 문구는 쓰지 않습니다.
 
 수집은 GitHub Actions 한 실행이 약 5시간 반 동안 `scripts/poll.sh` 루프를 돌며 `citydata_ppltn`을 10분마다 호출해 `data` 브랜치의 `current.json`과 `street.json`(30분마다)을 갱신하고, 끝나기 전에 다음 실행을 예약합니다. 10분 크론만으로는 GitHub가 하루 몇 번만 실행해 줍니다. 수집기 수정은 다음 실행부터 적용됩니다. 바로 적용하려면 Actions에서 collect를 먼저 수동 실행(Run workflow)한 뒤 돌고 있는 실행을 취소하세요. 대기 중인 실행은 만들어진 시점의 커밋에 고정되고, 최신 수동 실행이 대기 중인 실행을 대체합니다. 수집을 멈추려면 워크플로 자체를 비활성화하세요. data 브랜치 커밋 메시지 앞의 `[Skip CI]`는 Cloudflare Pages 프리뷰 빌드(무료 500회/월)를 막는 표시이고, Pages 설정에서 프리뷰 브랜치를 None으로 두면 이중으로 안전합니다. 페이지 빌드는 `main`을 올릴 때만 돕니다. 인증키는 Actions Secrets와 로컬 `secrets/seoul.env`에만 둡니다.
 
