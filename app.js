@@ -198,8 +198,8 @@ function renderStamp() {
   if (at) time.dateTime = `${at.slice(0, 16).replace(" ", "T")}+09:00`;
   const summaryLine = summaryText(data);
   const parts = [time];
-  if (summaryLine) parts.push(el("span", "stamp-summary", summaryLine));
-  if (staleText) parts.push(el("span", "stamp-stale", staleText));
+  if (summaryLine) parts.push(" ", el("span", "stamp-summary", summaryLine));
+  if (staleText) parts.push(" ", el("span", "stamp-stale", staleText));
   stamp.replaceChildren(...parts);
   if (sheetStamp) sheetStamp.textContent = staleText ? `${text} · ${staleText.replace(/\.$/, "")}` : text;
   if (summary) summary.textContent = summaryLine || "지금 붐비는 곳부터";
