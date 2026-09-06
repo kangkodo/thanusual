@@ -1,6 +1,6 @@
 import { $, BOUNDS, RANK, hasCoords, visibleRows, state } from "./shared.js";
 import { radiusPx, STYLE } from "./map-radius.js";
-import { bandIndex, dongCode, kstHour, metroFlow, quantileBreaks } from "./lib/layers.js";
+import { bandIndex, dongCode, kstHour, livingSlice, metroFlow, quantileBreaks } from "./lib/layers.js";
 
 const SEOUL = [37.55, 126.98];
 // Must match TILE_BBOX in lib/tiles.js so Leaflet never asks for a tile the proxy rejects.
@@ -92,20 +92,21 @@ function drawDong(g) {
   const geo = state.dongGeo;
   const living = state.layerData.dong;
   if (!geo || !living) return;
-  const pops = new Map();
-  for (const row of living.dongs || []) pops.set(row.code, row.spop);
+  const slice = livingSlice(living, kstHour());
+  if (!slice) return;
+  const pops = slice.pops;
   const breaks = quantileBreaks([...pops.values()]);
-  const canvas = window.L.canvas({ padding: 0.5 });
+  // Same renderer as the circles, drawn first, so polygons sit under them for paint and hit-testing.
   window.L.geoJSON(geo, {
-    renderer: canvas,
     style(feature) {
       const spop = pops.get(dongCode(feature.properties.code));
       const band = bandIndex(spop, breaks);
+      // Ink ramp, not --hot: orange on the map means crowded now, and only that.
       return {
         color: theme.ink,
         weight: 0.4,
-        fillColor: spop ? theme.붐빔 : theme.보통,
-        fillOpacity: spop ? 0.12 + band * 0.12 : 0.04,
+        fillColor: theme.ink,
+        fillOpacity: spop ? 0.06 + band * 0.1 : 0.02,
       };
     },
     onEachFeature(feature, layer) {
@@ -128,10 +129,10 @@ function drawMetro(g) {
     const band = bandIndex(n, breaks);
     const layer = window.L.circleMarker([s.lat, s.lng], {
       radius: 4 + band,
-      color: theme.붐빔,
-      fillColor: theme.붐빔,
+      color: theme.ink,
+      fillColor: theme.ink,
       weight: 1,
-      fillOpacity: 0.25 + band * 0.12,
+      fillOpacity: 0.2 + band * 0.12,
     });
     hoverTip(layer, `${s.line} ${s.name}`);
     g.addLayer(layer);
@@ -159,13 +160,13 @@ function drawStreet(g, zoom) {
   for (const acc of data.incidents || []) {
     if (!hasCoords(acc)) continue;
     const layer = window.L.circleMarker([acc.lat, acc.lng], {
-      radius: 8,
+      radius: 7,
       color: theme.ink,
-      fillColor: theme.붐빔,
-      weight: 1,
-      fillOpacity: 0.85,
+      fillColor: theme.ink,
+      weight: 2,
+      fillOpacity: 0.35,
     });
-    hoverTip(layer, acc.text || "돌발");
+    hoverTip(layer, acc.text || "도로 통제");
     g.addLayer(layer);
   }
 }
@@ -195,6 +196,8 @@ function drawOverlays() {
   const zoom = map.getZoom();
   pinsDrawn = zoom >= PIN_ZOOM;
   const layers = state.layers || {};
+
+  drawGroup("dong", layers.dong, drawDong);
 
   if (state.data && layers.now) {
     const rows = visibleRows(state.data, state.cat, state.q);
@@ -238,6 +241,9 @@ function drawOverlays() {
           className: selected ? "place-label place-label-selected" : "place-label",
           opacity: 1,
         });
+      } else {
+        // At city zoom color is the only cue; the hover text pairs it with the level word.
+        hoverTip(layer, place.level ? `${place.name} ${place.level}` : place.name);
       }
       overlays.addLayer(layer);
       if (selected) selectedLayer = layer;
@@ -248,7 +254,6 @@ function drawOverlays() {
     }
   }
 
-  drawGroup("dong", layers.dong, drawDong);
   drawGroup("metro", layers.metro, drawMetro);
   drawGroup("street", layers.street, (g) => drawStreet(g, zoom));
   drawGroup("today", layers.today, drawToday);
@@ -268,6 +273,8 @@ function createMap(pane, status) {
     preferCanvas: true,
   }).setView(SEOUL, 11);
   map.zoomControl.setPosition("topright");
+  pane.setAttribute("role", "region");
+  pane.setAttribute("aria-label", "서울 지도");
   tiles = window.L.tileLayer(tileUrl(), {
     attribution:
       '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',

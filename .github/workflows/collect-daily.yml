@@ -2,7 +2,8 @@ name: collect-daily
 on:
   workflow_dispatch:
   schedule:
-    - cron: "20 16 * * *"
+    - cron: "20 16 * * *"   # 01:20 KST: today.json for the new day
+    - cron: "20 4 * * *"    # 13:20 KST: Seoul loads 생활인구 D-4 during the day, after the night run
 permissions:
   contents: write
 jobs:

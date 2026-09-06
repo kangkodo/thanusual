@@ -1,6 +1,6 @@
 import { $, CATS, DATA_URLS, ageMinutes, ageText, el, fmt, later, newer, pickSnapshot, summaryText, usualPct, usualText, visibleRows, state } from "./shared.js";
 import { setMapPickHandler, syncMap } from "./map.js";
-import { DONG_GEO_URL, LAYERS, layerUrls } from "./lib/layers.js";
+import { DONG_GEO_URL, LAYERS, daysAgo, kstDate, kstHour, layerUrls, livingSlice, metroFlow } from "./lib/layers.js";
 
 const STALE_MIN = 60;
 const REFRESH_MS = 5 * 60 * 1000;
@@ -85,17 +85,30 @@ function updateLayerNote() {
   const note = $("layer-note");
   if (!note) return;
   const bits = [];
+  const hour = kstHour();
   const living = state.layerData.dong;
   if (state.layers.dong && living?.ymd) {
-    bits.push(
-      `동네는 ${living.ymd.slice(0, 4)}.${living.ymd.slice(4, 6)}.${living.ymd.slice(6, 8)} ${living.tt}시 생활인구입니다.`,
-    );
+    const slice = livingSlice(living, hour);
+    const days = daysAgo(living.ymd);
+    const date = `${Number(living.ymd.slice(4, 6))}월 ${Number(living.ymd.slice(6, 8))}일`;
+    const when = days != null ? `${days}일 전(${date})` : date;
+    bits.push(`동네는 ${when} ${Number(slice?.tt ?? living.tt)}시 생활인구입니다.`);
   }
-  if (state.layers.metro && state.layerData.metro?.month) {
-    bits.push(`지하철은 ${state.layerData.metro.month} 승하차입니다.`);
+  const metro = state.layerData.metro;
+  if (state.layers.metro && metro?.month) {
+    const active = (metro.stations || []).filter((s) => metroFlow(s, hour) > 0).length;
+    bits.push(`지하철은 ${metro.month.slice(0, 4)}년 ${Number(metro.month.slice(4, 6))}월 ${hour}시대 한 달 승하차 합계입니다. 지금 칸 혼잡이 아닙니다.`);
+    if (active < 10) bits.push("이 시간대 승하차 자료가 거의 없습니다.");
   }
-  if (state.layers.street && state.layerData.street) {
-    bits.push("따릉이는 확대하면 보입니다.");
+  const street = state.layerData.street;
+  if (state.layers.street && street) {
+    bits.push(`거리 자료는 ${String(street.generated_at || "").slice(11, 16)} 기준이고 따릉이는 확대하면 보입니다.`);
+  }
+  const today = state.layerData.today;
+  if (state.layers.today && today?.date) {
+    const n = (today.events || []).length;
+    const date = `${Number(today.date.slice(5, 7))}월 ${Number(today.date.slice(8, 10))}일`;
+    bits.push(today.date === kstDate() ? `오늘 행사 ${n}건입니다.` : `오늘 행사 자료가 아직 없어 ${date} 행사 ${n}건입니다.`);
   }
   note.hidden = !bits.length;
   note.textContent = bits.join(" ");
@@ -212,6 +225,7 @@ function render() {
   bindSheet();
   bindBoard();
   bindLayers();
+  updateLayerNote(); // the note names the hour the map is drawing; keep them in step as time passes
   const data = state.data;
   const banner = $("banner");
   const board = $("board");

@@ -25,38 +25,57 @@ def dong_code(value: str | None) -> str:
     return str(value or "").strip()[:8]
 
 
-def pick_slice(key: str, now: datetime.datetime) -> tuple[list[dict], str, str] | tuple[None, None, None]:
-    hour = f"{now.hour:02d}"
+SLICES = ("00", "03", "06", "09", "12", "15", "18", "21")
+
+
+def pick_day(key: str, now: datetime.datetime) -> tuple[str | None, dict[str, list[dict]]]:
+    """Newest complete day (4 to 11 days back) with its eight hourly slices; a partial day only as a last resort."""
+    partial: tuple[str, dict[str, list[dict]]] | None = None
     for delta in range(4, 12):
         ymd = (now.date() - datetime.timedelta(days=delta)).strftime("%Y%m%d")
-        for tt in (hour, "12", "18", "00"):
+        slices: dict[str, list[dict]] = {}
+        for tt in SLICES:
             rows, err = fetch_rows(key, "Spop250mLocalResdDong", 1, 1000, ymd, tt)
             if rows:
-                return rows, ymd, tt
-            if err not in ("INFO-200", "empty"):
+                slices[tt] = rows
+            elif err not in ("INFO-200", "empty"):
                 print(f"living skip {ymd}/{tt} {err}", flush=True)
-    return None, None, None
+        if len(slices) == len(SLICES):
+            return ymd, slices
+        if slices and partial is None:
+            partial = (ymd, slices)
+    return partial or (None, {})
 
 
 def collect(key: str) -> dict:
     now = datetime.datetime.now(KST).replace(tzinfo=None)
-    rows, ymd, tt = pick_slice(key, now)
-    if not rows:
+    ymd, raw = pick_day(key, now)
+    if not raw:
         raise SystemExit("living population slice not published yet")
-    dongs = []
-    for row in rows:
-        code = dong_code(row.get("H_DNG_CD"))
-        spop = _num(row.get("SPOP"))
-        if len(code) != 8 or spop is None:
-            continue
-        dongs.append({"code": code, "spop": round(spop)})
+    slices: dict[str, dict[str, int]] = {}
+    for tt, rows in raw.items():
+        pops: dict[str, int] = {}
+        for row in rows:
+            code = dong_code(row.get("H_DNG_CD"))
+            spop = _num(row.get("SPOP"))
+            if len(code) != 8 or spop is None:
+                continue
+            pops[code] = round(spop)
+        if pops:
+            slices[tt] = pops
+    if not slices:
+        raise SystemExit("living slices had no usable rows")
+    # Older clients read one slice (tt + dongs): give them the one nearest the collection hour.
+    near = (now.hour // 3) * 3
+    tt = min(slices, key=lambda t: abs(int(t) - near))
+    dongs = [{"code": code, "spop": spop} for code, spop in slices[tt].items()]
     return {
         "generated_at": now.strftime("%Y-%m-%d %H:%M:%S"),
         "ymd": ymd,
         "tt": tt,
-        "lag": "4일 전 이 시각 전후",
         "ok": len(dongs),
         "dongs": dongs,
+        "slices": slices,
     }
 
 
@@ -68,7 +87,7 @@ def main() -> None:
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(payload, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
-    print(f"living {payload['ok']} {payload['ymd']} {payload['tt']} -> {out}", flush=True)
+    print(f"living {payload['ok']} {payload['ymd']} slices {sorted(payload['slices'])} -> {out}", flush=True)
 
 
 if __name__ == "__main__":
