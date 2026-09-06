@@ -12,15 +12,6 @@ const PIN_ZOOM = 13;
 const FOCUS_ZOOM = 14;
 const TAP_RADIUS = 14;
 const TILE_FAIL_COPY = "지도를 불러오지 못했습니다. 목록은 그대로입니다.";
-const PHONE = "(max-width: 47.99rem)";
-
-// On the phone the sheet covers the bottom of the map; shift the point of interest
-// up by half the sheet so it lands in the middle of what is actually visible.
-function sheetOffset() {
-  if (!window.matchMedia || !window.matchMedia(PHONE).matches) return 0;
-  const rail = $("rail");
-  return rail ? Math.round(rail.getBoundingClientRect().height / 2) : 0;
-}
 
 let map;
 let tiles;
@@ -105,9 +96,8 @@ function drawDong(g) {
   if (!slice) return;
   const pops = slice.pops;
   const breaks = quantileBreaks([...pops.values()]);
-  const canvas = window.L.canvas({ padding: 0.5 });
+  // Same renderer as the circles, drawn first, so polygons sit under them for paint and hit-testing.
   window.L.geoJSON(geo, {
-    renderer: canvas,
     style(feature) {
       const spop = pops.get(dongCode(feature.properties.code));
       const band = bandIndex(spop, breaks);
@@ -207,6 +197,8 @@ function drawOverlays() {
   pinsDrawn = zoom >= PIN_ZOOM;
   const layers = state.layers || {};
 
+  drawGroup("dong", layers.dong, drawDong);
+
   if (state.data && layers.now) {
     const rows = visibleRows(state.data, state.cat, state.q);
     const peersByLevel = new Map();
@@ -262,7 +254,6 @@ function drawOverlays() {
     }
   }
 
-  drawGroup("dong", layers.dong, drawDong);
   drawGroup("metro", layers.metro, drawMetro);
   drawGroup("street", layers.street, (g) => drawStreet(g, zoom));
   drawGroup("today", layers.today, drawToday);
@@ -281,7 +272,6 @@ function createMap(pane, status) {
     maxBoundsViscosity: 1,
     preferCanvas: true,
   }).setView(SEOUL, 11);
-  map.panBy([0, sheetOffset()], { animate: false });
   map.zoomControl.setPosition("topright");
   pane.setAttribute("role", "region");
   pane.setAttribute("aria-label", "서울 지도");
@@ -344,7 +334,6 @@ export function syncMap() {
       if (place) {
         suppressZoomDraw = true;
         map.setView([place.lat, place.lng], FOCUS_ZOOM, { animate: false });
-        map.panBy([0, sheetOffset()], { animate: false });
         suppressZoomDraw = false;
       }
       state.focus = false;

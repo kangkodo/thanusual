@@ -29,7 +29,8 @@ SLICES = ("00", "03", "06", "09", "12", "15", "18", "21")
 
 
 def pick_day(key: str, now: datetime.datetime) -> tuple[str | None, dict[str, list[dict]]]:
-    """Newest published day (4 to 11 days back) with its 3-hour slices, so the map can show this time of day."""
+    """Newest complete day (4 to 11 days back) with its eight hourly slices; a partial day only as a last resort."""
+    partial: tuple[str, dict[str, list[dict]]] | None = None
     for delta in range(4, 12):
         ymd = (now.date() - datetime.timedelta(days=delta)).strftime("%Y%m%d")
         slices: dict[str, list[dict]] = {}
@@ -39,9 +40,11 @@ def pick_day(key: str, now: datetime.datetime) -> tuple[str | None, dict[str, li
                 slices[tt] = rows
             elif err not in ("INFO-200", "empty"):
                 print(f"living skip {ymd}/{tt} {err}", flush=True)
-        if slices:
+        if len(slices) == len(SLICES):
             return ymd, slices
-    return None, {}
+        if slices and partial is None:
+            partial = (ymd, slices)
+    return partial or (None, {})
 
 
 def collect(key: str) -> dict:
@@ -63,8 +66,8 @@ def collect(key: str) -> dict:
     if not slices:
         raise SystemExit("living slices had no usable rows")
     # Older clients read one slice (tt + dongs): give them the one nearest the collection hour.
-    near = f"{(now.hour // 3) * 3:02d}"
-    tt = near if near in slices else sorted(slices)[0]
+    near = (now.hour // 3) * 3
+    tt = min(slices, key=lambda t: abs(int(t) - near))
     dongs = [{"code": code, "spop": spop} for code, spop in slices[tt].items()]
     return {
         "generated_at": now.strftime("%Y-%m-%d %H:%M:%S"),

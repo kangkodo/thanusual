@@ -91,13 +91,13 @@ function updateLayerNote() {
     const slice = livingSlice(living, hour);
     const days = daysAgo(living.ymd);
     const date = `${Number(living.ymd.slice(4, 6))}월 ${Number(living.ymd.slice(6, 8))}일`;
-    const ago = days != null ? ` (${days}일 전)` : "";
-    bits.push(`동네는 ${date} ${Number(slice?.tt ?? living.tt)}시 생활인구입니다${ago}.`);
+    const when = days != null ? `${days}일 전(${date})` : date;
+    bits.push(`동네는 ${when} ${Number(slice?.tt ?? living.tt)}시 생활인구입니다.`);
   }
   const metro = state.layerData.metro;
   if (state.layers.metro && metro?.month) {
     const active = (metro.stations || []).filter((s) => metroFlow(s, hour) > 0).length;
-    bits.push(`지하철은 ${metro.month.slice(0, 4)}년 ${Number(metro.month.slice(4, 6))}월 ${hour}시대 평균 승하차입니다. 지금 칸 혼잡이 아닙니다.`);
+    bits.push(`지하철은 ${metro.month.slice(0, 4)}년 ${Number(metro.month.slice(4, 6))}월 ${hour}시대 한 달 승하차 합계입니다. 지금 칸 혼잡이 아닙니다.`);
     if (active < 10) bits.push("이 시간대 승하차 자료가 거의 없습니다.");
   }
   const street = state.layerData.street;
@@ -107,7 +107,8 @@ function updateLayerNote() {
   const today = state.layerData.today;
   if (state.layers.today && today?.date) {
     const n = (today.events || []).length;
-    bits.push(today.date === kstDate() ? `오늘 행사 ${n}건입니다.` : `오늘 행사 자료가 아직 없어 ${today.date.slice(5)} 행사 ${n}건입니다.`);
+    const date = `${Number(today.date.slice(5, 7))}월 ${Number(today.date.slice(8, 10))}일`;
+    bits.push(today.date === kstDate() ? `오늘 행사 ${n}건입니다.` : `오늘 행사 자료가 아직 없어 ${date} 행사 ${n}건입니다.`);
   }
   note.hidden = !bits.length;
   note.textContent = bits.join(" ");

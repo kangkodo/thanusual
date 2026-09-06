@@ -371,9 +371,11 @@ main {
 
 @media (max-width: 47.99rem) {
   .shell { position: relative; }
+  /* The map's own viewport ends where the sheet begins, so centering a place centers it in what is visible. */
   .map-shell {
     position: absolute;
     inset: 0;
+    bottom: var(--sheet);
     flex: none;
   }
   #map { min-height: 100%; }
@@ -421,8 +423,6 @@ main {
   .sheet-stamp { font-variant-numeric: tabular-nums; }
   .masthead, .foot { display: none; }
   .tabs button { padding: var(--space-2); }
-  .leaflet-bottom { bottom: calc(var(--sheet) + var(--space-2)); }
-  .map-status { bottom: calc(var(--sheet) + 2.75rem); }
 }
 .map-status {
   position: absolute;
