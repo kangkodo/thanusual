@@ -4,13 +4,6 @@
   font-weight: 100 900;
   font-display: swap;
 }
-@font-face {
-  font-family: "Geist Mono";
-  src: url("./vendor/geist/GeistMono-Variable.woff2") format("woff2");
-  font-weight: 100 900;
-  font-display: swap;
-}
-
 :root {
   color-scheme: light dark;
 
@@ -27,7 +20,6 @@
   --chart-neutral: #8f8f8f;
 
   --sans: "Geist", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
-  --mono: "Geist Mono", "SF Mono", Menlo, Consolas, monospace;
 
   --weight-regular: 400;
   --weight-medium: 500;
@@ -163,7 +155,6 @@ p, h1, ol { margin: 0; }
   color: var(--text-secondary);
   text-align: right;
 }
-.stamp-time { font-family: var(--mono); }
 
 .note {
   margin: 0;
@@ -224,7 +215,7 @@ p, h1, ol { margin: 0; }
   min-height: 44px;
   margin: 0;
   padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--border);
+  border: 1px solid var(--text-secondary);
   border-radius: var(--radius-small);
   background: var(--surface);
   color: var(--text);
@@ -315,7 +306,10 @@ p, h1, ol { margin: 0; }
 .lvl-약간-붐빔, .lvl-붐빔 { color: var(--hot); font-weight: var(--weight-semibold); }
 .later { color: var(--text-secondary); }
 .stamp-stale { color: var(--text); }
-.row.is-selected .row-btn { background: var(--surface-secondary); }
+.row.is-selected .row-btn {
+  background: var(--surface-secondary);
+  box-shadow: -3px 0 0 var(--border-strong); /* in the board's left gutter, clear of the rank digit */
+}
 .empty {
   padding: var(--space-8) 0;
   color: var(--text-secondary);
