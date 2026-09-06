@@ -5,7 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light dark">
   <title>평소보다</title>
-  <meta name="description" content="서울 121곳, 지금 붐비는 곳부터.">
+  <meta name="description" content="서울 121곳이 지금, 그리고 평소보다 얼마나 붐비는지 한 지도에서.">
+  <meta property="og:title" content="평소보다">
+  <meta property="og:description" content="서울 121곳이 지금, 그리고 평소보다 얼마나 붐비는지 한 지도에서.">
+  <meta property="og:url" content="https://thanusual.pages.dev/">
   <link rel="preload" href="./vendor/geist/Geist-Variable.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="./vendor/leaflet/leaflet.css">
   <link rel="stylesheet" href="./styles.css">
@@ -14,13 +17,14 @@
   <div class="shell">
     <a class="skip" id="skip" href="#board">장소 목록으로</a>
     <div class="rail" id="rail">
-      <button type="button" class="sheet-handle" id="sheet-handle" aria-expanded="false" aria-controls="board">
+      <button type="button" class="sheet-handle" id="sheet-handle" aria-label="장소 목록" aria-expanded="false" aria-controls="board" aria-describedby="sheet-summary sheet-stamp">
         <span class="sheet-grip" aria-hidden="true"></span>
-        지금 붐비는 곳부터
+        <span class="sheet-summary" id="sheet-summary">지금 붐비는 곳부터</span>
+        <span class="sheet-stamp" id="sheet-stamp"></span>
       </button>
       <header class="masthead">
         <h1 class="identity">평소보다</h1>
-        <p class="stamp" id="stamp" role="status">불러오는 중</p>
+        <p class="stamp" id="stamp">불러오는 중</p>
       </header>
       <main id="main">
         <form class="place-search" id="place-search" role="search">
