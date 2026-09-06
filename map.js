@@ -62,6 +62,7 @@ const tileUrl = () => `/tiles/${darkQuery && darkQuery.matches ? "dark" : "light
 if (darkQuery) {
   darkQuery.addEventListener("change", () => {
     readTheme();
+    tileErrors = 0; // the removed tiles can no longer error; do not let an old miss pin the banner
     if (tiles) tiles.setUrl(tileUrl());
     if (map) drawOverlays();
   });
