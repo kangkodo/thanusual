@@ -118,7 +118,6 @@ p, h1, ol { margin: 0; }
   border-radius: var(--radius-small);
 }
 .skip:focus { top: var(--space-2); }
-.skip-layers { left: 11rem; }
 
 .sr-only {
   position: absolute;
@@ -309,7 +308,7 @@ p, h1, ol { margin: 0; }
 .stamp-stale { color: var(--text); }
 .row.is-selected .row-btn {
   background: var(--surface-secondary);
-  box-shadow: inset 3px 0 0 var(--border-strong);
+  box-shadow: -3px 0 0 var(--border-strong); /* in the board's left gutter, clear of the rank digit */
 }
 .empty {
   padding: var(--space-8) 0;
