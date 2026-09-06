@@ -1,3 +1,4 @@
-# Vendored assets change only with a new vendored version (path or filename bump).
+# Vendored assets are referenced by unversioned paths, so cache for a day, not forever.
+# Replacing a vendored file in place still means up to a day of mixed versions; rename the path for a clean cut.
 /vendor/*
-  Cache-Control: public, max-age=31536000, immutable
+  Cache-Control: public, max-age=86400

@@ -23,13 +23,14 @@ First screen is a ranked list in a side panel (phone: bottom sheet). The map is 
 - The tile Function only proxies z10–18 inside `TILE_BBOX` (`lib/tiles.js`); `map.js` `TILE_BOUNDS` must match. Referer is hotlink hygiene, not auth.
 - There is **no rate limit** on `/tiles/*` today. WAF rate-limiting rules need a zone, and a bare `*.pages.dev` host has none. Options when needed: attach a custom domain (then a WAF rule), or a code-side limiter. Every `/tiles/*` hit, including 400/403, counts toward the Pages Functions daily cap. Watch the Functions metrics after launch.
 - Bump `TILE_CACHE_VERSION` in `lib/tiles.js` when tile headers or style change; pages.dev has no cache purge.
+- `_headers` caches `/vendor/*` for a day in browsers (wrangler pages dev applies it too). When replacing a vendored file, rename the path (or add a `?v=` at the reference) so the old copy cannot mix with new page code.
 - Optional later: Naver place search for coordinates, then plot on the Leaflet map. Do not put Naver REST keys in git or in the browser bundle.
 - Custom pins and density viz are in scope. Place names appear at zoom ≥13 as plain map labels (Leaflet tooltip, no extra library). City zoom stays unlabeled. One canvas: map behind, ranking in a left rail (desktop) or bottom sheet (phone), with name search. Pin click selects the row. There is no separate list-only page.
 
 ## Design
 
 - Reference: `../vercel-design.md` (Vercel brand guideline) for judgment only: Geist type, monochrome, spacing tokens, no cards, evidence-first first screen, light/dark without a switcher. Do **not** add the Vercel wordmark, triangle, or `vercel-brand.css`; this is not a Vercel-authored page.
-- Fonts: Geist Sans/Mono vendored in `vendor/geist/` (OFL). Hangul falls back to the system gothic stack. No Google Fonts or other CDN assets.
+- Fonts: Geist Sans vendored in `vendor/geist/` (OFL); Geist Mono is vendored but unused (tabular numerals cover the digits). Hangul falls back to the system gothic stack. No Google Fonts or other CDN assets.
 - Tokens live in `styles.css` `:root` (`--surface`, `--text`, `--border*`, `--hot`, `--calm`, `--space-*`, `--type-*`). Page CSS uses tokens, never raw hex. Map circle colors come from those tokens via `STYLE[level].token` in `map-radius.js`, resolved at draw time in `map.js`.
 - Copy: sentence case, no em dashes in prose, no eyebrows or pills. Level color (`--hot`) is always paired with the level text.
 
