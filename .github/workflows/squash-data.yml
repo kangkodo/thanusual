@@ -1,0 +1,59 @@
+name: squash-data
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "33 3 1 * *"   # 12:33 KST on the 1st; collect-daily fires at 04:20 and 16:20 UTC
+permissions:
+  contents: write
+# The data branch gets a commit every 10 minutes (collect.yml, scripts/poll.sh) and
+# twice a day (collect-daily.yml). Only the latest tree matters: baseline.json is
+# the 평소 history itself, so the branch history is dead weight (~1.5-2 MB/day).
+# Once a month this replaces it with one root commit holding the current tree.
+#
+# Why this is safe next to writers that are never stopped:
+# - poll.sh opens every cycle with `git fetch origin data && git reset --hard
+#   FETCH_HEAD`, so its next cycle lands on the new root; fetch + reset do not
+#   care that the histories are unrelated. A loop push that landed between our
+#   fetch and our push makes the lease fail and we retry. A loop push that lost
+#   the race to ours is rejected as non-fast-forward and poll.sh retries next
+#   cycle, so at most one 10-minute sample is lost, once a month.
+# - collect-daily.yml starts from a fresh depth-1 checkout and pulls --rebase
+#   before pushing; a squash inside its seconds-wide checkout-to-push window
+#   rebases onto the new root (rehearsed), and at worst fails that one run,
+#   which the next daily run heals.
+# - The client reads by branch name (raw.githubusercontent.com, jsDelivr), so a
+#   rewritten history is invisible to it.
+# - [Skip CI] in the message keeps Cloudflare Pages from building a preview
+#   (500 builds/month free cap), same as every other data commit.
+# Not in the `collect` concurrency group: that would cancel the loop's pending
+# successor run.
+jobs:
+  squash:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: data
+      - name: Replace data branch history with one commit holding the current tree
+        run: |
+          git config user.name "thanusual-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          for attempt in 1 2 3; do
+            git fetch -q --depth=1 origin +refs/heads/data:refs/remotes/origin/data
+            OLD=$(git rev-parse origin/data)
+            # A shallow clone hides parents from rev-parse; the raw object still lists them.
+            if ! git cat-file -p "$OLD" | grep -q '^parent '; then
+              echo "data is already a single commit ($OLD), nothing to do"
+              exit 0
+            fi
+            NEW=$(git commit-tree "$OLD^{tree}" -m "[Skip CI] data: monthly squash, latest snapshot only")
+            if git push --force-with-lease=refs/heads/data:"$OLD" origin "$NEW:refs/heads/data"; then
+              echo "data: $OLD -> $NEW on attempt $attempt"
+              exit 0
+            fi
+            echo "lease failed on attempt $attempt (something pushed to data), retrying in 20s"
+            sleep 20
+          done
+          echo "::error::could not squash data in 3 attempts"
+          exit 1
