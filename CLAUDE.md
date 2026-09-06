@@ -33,6 +33,7 @@ First screen is a ranked list in a side panel (phone: bottom sheet). The map is 
 - Fonts: Geist Sans vendored in `vendor/geist/` (OFL); Geist Mono is vendored but unused (tabular numerals cover the digits). Hangul falls back to the system gothic stack. No Google Fonts or other CDN assets.
 - Tokens live in `styles.css` `:root` (`--surface`, `--text`, `--border*`, `--hot`, `--calm`, `--space-*`, `--type-*`). Page CSS uses tokens, never raw hex. Map circle colors come from those tokens via `STYLE[level].token` in `map-radius.js`, resolved at draw time in `map.js`.
 - Copy: sentence case, no em dashes in prose, no eyebrows or pills. Level color (`--hot`) is always paired with the level text.
+- Icons live in `icons/` (`icon.svg` source plus rendered `icon-512.png` and `apple-touch-icon.png`, re-render with `qlmanage -t -s 512` then `sips -z 180 180`); the manifest is `manifest.webmanifest` at the root. Head links to all three.
 
 ## Deploy Configuration (configured by /setup-deploy)
 

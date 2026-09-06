@@ -2,3 +2,5 @@
 # Replacing a vendored file in place still means up to a day of mixed versions; rename the path for a clean cut.
 /vendor/*
   Cache-Control: public, max-age=86400
+/icons/*
+  Cache-Control: public, max-age=86400
