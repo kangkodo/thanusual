@@ -58,5 +58,7 @@ test("200 png with cache headers and nosniff; @2x forwarded upstream", async () 
   assert.equal(r.headers.get("Content-Type"), "image/png");
   assert.equal(r.headers.get("X-Content-Type-Options"), "nosniff");
   assert.equal(r.headers.get("Cache-Control"), "public, max-age=86400");
-  assert.equal(seen.includes("/11/1748/796@2x.png?key=test-key"), true);
+  assert.equal(seen.includes("/light_all/11/1748/796@2x.png?key=test-key"), true);
+  await onRequestGet({ request: req(GOOD.replace("/tiles/", "/tiles/dark/")), env, waitUntil: () => {} });
+  assert.equal(seen.includes("/dark_all/11/1748/796.png?key=test-key"), true);
 });

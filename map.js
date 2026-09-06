@@ -14,6 +14,7 @@ const TAP_RADIUS = 14;
 const TILE_FAIL_COPY = "지도를 불러오지 못했습니다. 목록은 그대로입니다.";
 
 let map;
+let tiles;
 let overlays;
 const extra = {};
 let tileFailed = false;
@@ -54,9 +55,14 @@ function circleStyle(place, peers, selected) {
   };
 }
 
-if (typeof window !== "undefined" && window.matchMedia) {
-  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+// The tile proxy serves CARTO light_all or dark_all; follow the page theme without a switcher.
+const darkQuery = typeof window !== "undefined" && window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+const tileUrl = () => `/tiles/${darkQuery && darkQuery.matches ? "dark" : "light"}/{z}/{x}/{y}{r}.png`;
+
+if (darkQuery) {
+  darkQuery.addEventListener("change", () => {
     readTheme();
+    if (tiles) tiles.setUrl(tileUrl());
     if (map) drawOverlays();
   });
 }
@@ -261,7 +267,7 @@ function createMap(pane, status) {
     preferCanvas: true,
   }).setView(SEOUL, 11);
   map.zoomControl.setPosition("topright");
-  window.L.tileLayer("/tiles/{z}/{x}/{y}{r}.png", {
+  tiles = window.L.tileLayer(tileUrl(), {
     attribution:
       '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
     maxZoom: 18,

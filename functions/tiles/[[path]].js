@@ -29,7 +29,7 @@ export async function onRequestGet({ request, env, waitUntil }) {
 
   let upstream;
   try {
-    upstream = await fetch(upstreamUrl(tile.z, tile.x, tile.y, tile.retina, key));
+    upstream = await fetch(upstreamUrl(tile.z, tile.x, tile.y, tile.retina, key, tile.style));
   } catch {
     return new Response("tile upstream error", { status: 502 });
   }
