@@ -1,6 +1,6 @@
 import { $, BOUNDS, RANK, hasCoords, visibleRows, state } from "./shared.js";
 import { radiusPx, STYLE } from "./map-radius.js";
-import { bandIndex, dongCode, kstHour, metroFlow, quantileBreaks } from "./lib/layers.js";
+import { bandIndex, dongCode, kstHour, livingSlice, metroFlow, quantileBreaks } from "./lib/layers.js";
 
 const SEOUL = [37.55, 126.98];
 // Must match TILE_BBOX in lib/tiles.js so Leaflet never asks for a tile the proxy rejects.
@@ -12,6 +12,15 @@ const PIN_ZOOM = 13;
 const FOCUS_ZOOM = 14;
 const TAP_RADIUS = 14;
 const TILE_FAIL_COPY = "지도를 불러오지 못했습니다. 목록은 그대로입니다.";
+const PHONE = "(max-width: 47.99rem)";
+
+// On the phone the sheet covers the bottom of the map; shift the point of interest
+// up by half the sheet so it lands in the middle of what is actually visible.
+function sheetOffset() {
+  if (!window.matchMedia || !window.matchMedia(PHONE).matches) return 0;
+  const rail = $("rail");
+  return rail ? Math.round(rail.getBoundingClientRect().height / 2) : 0;
+}
 
 let map;
 let tiles;
@@ -92,8 +101,9 @@ function drawDong(g) {
   const geo = state.dongGeo;
   const living = state.layerData.dong;
   if (!geo || !living) return;
-  const pops = new Map();
-  for (const row of living.dongs || []) pops.set(row.code, row.spop);
+  const slice = livingSlice(living, kstHour());
+  if (!slice) return;
+  const pops = slice.pops;
   const breaks = quantileBreaks([...pops.values()]);
   const canvas = window.L.canvas({ padding: 0.5 });
   window.L.geoJSON(geo, {
@@ -101,11 +111,12 @@ function drawDong(g) {
     style(feature) {
       const spop = pops.get(dongCode(feature.properties.code));
       const band = bandIndex(spop, breaks);
+      // Ink ramp, not --hot: orange on the map means crowded now, and only that.
       return {
         color: theme.ink,
         weight: 0.4,
-        fillColor: spop ? theme.붐빔 : theme.보통,
-        fillOpacity: spop ? 0.12 + band * 0.12 : 0.04,
+        fillColor: theme.ink,
+        fillOpacity: spop ? 0.06 + band * 0.1 : 0.02,
       };
     },
     onEachFeature(feature, layer) {
@@ -128,10 +139,10 @@ function drawMetro(g) {
     const band = bandIndex(n, breaks);
     const layer = window.L.circleMarker([s.lat, s.lng], {
       radius: 4 + band,
-      color: theme.붐빔,
-      fillColor: theme.붐빔,
+      color: theme.ink,
+      fillColor: theme.ink,
       weight: 1,
-      fillOpacity: 0.25 + band * 0.12,
+      fillOpacity: 0.2 + band * 0.12,
     });
     hoverTip(layer, `${s.line} ${s.name}`);
     g.addLayer(layer);
@@ -159,13 +170,13 @@ function drawStreet(g, zoom) {
   for (const acc of data.incidents || []) {
     if (!hasCoords(acc)) continue;
     const layer = window.L.circleMarker([acc.lat, acc.lng], {
-      radius: 8,
+      radius: 7,
       color: theme.ink,
-      fillColor: theme.붐빔,
-      weight: 1,
-      fillOpacity: 0.85,
+      fillColor: theme.ink,
+      weight: 2,
+      fillOpacity: 0.35,
     });
-    hoverTip(layer, acc.text || "돌발");
+    hoverTip(layer, acc.text || "도로 통제");
     g.addLayer(layer);
   }
 }
@@ -238,6 +249,9 @@ function drawOverlays() {
           className: selected ? "place-label place-label-selected" : "place-label",
           opacity: 1,
         });
+      } else {
+        // At city zoom color is the only cue; the hover text pairs it with the level word.
+        hoverTip(layer, place.level ? `${place.name} ${place.level}` : place.name);
       }
       overlays.addLayer(layer);
       if (selected) selectedLayer = layer;
@@ -267,7 +281,10 @@ function createMap(pane, status) {
     maxBoundsViscosity: 1,
     preferCanvas: true,
   }).setView(SEOUL, 11);
+  map.panBy([0, sheetOffset()], { animate: false });
   map.zoomControl.setPosition("topright");
+  pane.setAttribute("role", "region");
+  pane.setAttribute("aria-label", "서울 지도");
   tiles = window.L.tileLayer(tileUrl(), {
     attribution:
       '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
@@ -327,6 +344,7 @@ export function syncMap() {
       if (place) {
         suppressZoomDraw = true;
         map.setView([place.lat, place.lng], FOCUS_ZOOM, { animate: false });
+        map.panBy([0, sheetOffset()], { animate: false });
         suppressZoomDraw = false;
       }
       state.focus = false;
