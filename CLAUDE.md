@@ -17,7 +17,7 @@ First screen is a ranked list in a side panel (phone: bottom sheet). The map is 
 ## Map
 
 - Engine: Leaflet 1.9.x vendored in `vendor/leaflet/`. Overlays (circles, HTML pins) are ours. No `leaflet.heat`.
-- Client tiles: same-origin `/tiles/{z}/{x}/{y}{r}.png` only. Pages Function injects `CARTO_API_KEY`. Never put that key in git or the browser bundle. Do **not** hit `tile.openstreetmap.org`.
+- Client tiles: same-origin `/tiles/{light|dark}/{z}/{x}/{y}{r}.png` only (style follows `prefers-color-scheme`; the bare `/tiles/{z}/{x}/{y}` form still means light). Pages Function injects `CARTO_API_KEY`. Never put that key in git or the browser bundle. Do **not** hit `tile.openstreetmap.org`.
 - Local tiles need `npx wrangler pages dev .` — not `python -m http.server`.
 - Never run `wrangler pages deploy .` from the repo root: `.dev.vars` sits in the output dir and would be published. Deploys go through git push only.
 - The tile Function only proxies z10–18 inside `TILE_BBOX` (`lib/tiles.js`); `map.js` `TILE_BOUNDS` must match. Referer is hotlink hygiene, not auth.
