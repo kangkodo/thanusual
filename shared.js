@@ -78,9 +78,13 @@ export function visibleRows(data, cat, q) {
 export function newer(a, b) {
   if (!a) return b;
   if (!b) return a;
-  // A snapshot with nothing in it never beats one with data, whatever its timestamp.
-  if ((a.ok > 0) !== (b.ok > 0)) return a.ok > 0 ? a : b;
   return (a.source_at || a.generated_at || "") >= (b.source_at || b.generated_at || "") ? a : b;
+}
+
+// current.json only: a snapshot with nothing in it never beats one with data, whatever its timestamp.
+export function pickSnapshot(hits) {
+  const good = hits.filter((h) => h && h.ok > 0);
+  return (good.length ? good : hits).reduce(newer, null);
 }
 
 // "YYYY-MM-DD HH:MM" from the Seoul API is KST wall-clock time.
@@ -95,6 +99,11 @@ export function ageText(min) {
   if (min == null) return "";
   if (min < 1) return "방금";
   if (min < 60) return `${min}분 전`;
+  if (min >= 1440) {
+    const d = Math.floor(min / 1440);
+    const h = Math.floor((min % 1440) / 60);
+    return h ? `${d}일 ${h}시간 전` : `${d}일 전`;
+  }
   const h = Math.floor(min / 60);
   const r = min % 60;
   return r ? `${h}시간 ${r}분 전` : `${h}시간 전`;
@@ -102,6 +111,7 @@ export function ageText(min) {
 
 export function summaryText(data) {
   const fresh = (data.places || []).filter((p) => p.state === "fresh");
+  if (!fresh.length) return "";
   const count = (level) => fresh.filter((p) => p.level === level).length;
   const hot = count("붐빔");
   const warm = count("약간 붐빔");

@@ -45,12 +45,12 @@ class BaselineTest(unittest.TestCase):
         self.assertEqual(b["places"]["A"]["today"], {str(idx): 2000})
 
     def test_migrates_version_1_entries(self):
-        idx = baseline.slot_index(baseline.parse_time("2026-09-06 05:25"))
+        idx = baseline.slot_index(baseline.parse_time("2026-09-06 05:35"))  # same 05:30 bin as the new sample
         n = [0] * baseline.WEEK
         s = [0] * baseline.WEEK
         n[idx], s[idx] = 1, 7000
         b = {"version": 1, "places": {"A": {"n": n, "sum": s, "last": f"2026-09-06/{idx}", "last_mid": 7000}}}
-        cur = baseline.update(b, snap("2026-09-06 05:35", 8000))
+        cur = baseline.update(b, snap("2026-09-06 05:45", 8000))
         e = b["places"]["A"]
         self.assertNotIn("last", e)
         self.assertEqual(e["today"], {str(idx): 7000, str(idx + 1): 8000})

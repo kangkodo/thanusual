@@ -2,7 +2,7 @@
 
 Live ranking of 121 Seoul citydata hotspots: how crowded now vs usual. Production: https://thanusual.pages.dev
 
-First screen is a ranked list in a side panel (phone: bottom sheet). The map is the canvas behind it. Copy in each row: name, congestion grade, people midpoint, forecast % labeled by its clock hour (「01시 예측」, never 「2시간 뒤」: the API forecasts a fixed hour), and 「평소보다 +N%」 once the baseline is ready. Baseline (scripts/baseline.py): same weekday, same 30-minute bin, one sample per slot per day, past weeks only, shown at n≥6 (two weeks); once half the places are ready `warming` flips and stays flipped, and the board sorts by 평소보다. Source data lags ~30 minutes (PPLTN_TIME), so copy says 「집계 약 30분 전」, never 「실시간」.
+First screen is a ranked list in a side panel (phone: bottom sheet). The map is the canvas behind it. Copy in each row: name, congestion grade, people midpoint, forecast % labeled by its clock hour (「01시 예측」, never 「2시간 뒤」: the API forecasts a fixed hour), and 「평소보다 +N%」 once the baseline is ready. Baseline (scripts/baseline.py): same weekday, same 30-minute bin, one sample per slot per day, past weeks only, shown at n≥6 (two weeks), 「평소와 비슷」 within ±5%; once half the places are ready `warming` flips and stays flipped, the board sorts by 평소보다 and rows without a value keep the grade order below. Stamp shows source age; past 60 minutes it says 「자료가 오래됐습니다」, or 「서울시 집계가 멈춰 있습니다」 when generated_at is still fresh. Source data lags ~30 minutes (PPLTN_TIME), so copy says 「집계 약 30분 전」, never 「실시간」.
 
 ## Product locks
 

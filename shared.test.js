@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { ageMinutes, ageText, hasCoords, later, newer, rowsOf, summaryText, usualPct, usualText, visibleRows } from "./shared.js";
+import { ageMinutes, ageText, hasCoords, later, newer, pickSnapshot, rowsOf, summaryText, usualPct, usualText, visibleRows } from "./shared.js";
 
 test("rowsOf keeps fresh rows, sorted by grade then mid", () => {
   const data = {
@@ -73,10 +73,18 @@ test("newer prefers the later snapshot and tolerates nulls", () => {
   assert.equal(newer(b, a), b);
   assert.equal(newer(null, a), a);
   assert.equal(newer(a, null), a);
+  // Layer files legitimately have ok 0 (no events today), so newer() itself stays timestamp-only.
+  const none = { ok: 0, generated_at: "2026-09-06 01:20:00" };
+  const old = { ok: 12, generated_at: "2026-09-05 01:20:00" };
+  assert.equal(newer(none, old), none);
+});
+
+test("pickSnapshot drops empty current.json copies unless nothing else loaded", () => {
   const blank = { ok: 0, generated_at: "2026-09-05 13:05:00" };
   const good = { ok: 121, source_at: "2026-09-05 09:23" };
-  assert.equal(newer(blank, good), good);
-  assert.equal(newer(good, blank), good);
+  assert.equal(pickSnapshot([blank, good, null]), good);
+  assert.equal(pickSnapshot([null, blank]), blank);
+  assert.equal(pickSnapshot([null, null]), null);
 });
 
 test("ageMinutes reads KST stamps and ageText words them", () => {
@@ -88,12 +96,15 @@ test("ageMinutes reads KST stamps and ageText words them", () => {
   assert.equal(ageText(30), "30분 전");
   assert.equal(ageText(120), "2시간 전");
   assert.equal(ageText(395), "6시간 35분 전");
+  assert.equal(ageText(1440), "1일 전");
+  assert.equal(ageText(5120), "3일 13시간 전");
 });
 
 test("summaryText counts hot places and folds the rest", () => {
   const p = (level) => ({ state: "fresh", level });
   assert.equal(summaryText({ places: [p("붐빔"), p("약간 붐빔"), p("여유"), p("보통"), { state: "missing" }] }), "붐빔 1 · 약간 붐빔 1 · 나머지 2곳 보통·여유");
   assert.equal(summaryText({ places: [p("여유"), p("여유")] }), "2곳 모두 보통·여유");
+  assert.equal(summaryText({ places: [{ state: "missing" }] }), "");
 });
 
 test("hasCoords requires finite numbers inside Seoul", () => {

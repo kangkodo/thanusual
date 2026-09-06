@@ -1,4 +1,4 @@
-import { $, CATS, DATA_URLS, ageMinutes, ageText, el, fmt, later, newer, summaryText, usualPct, usualText, visibleRows, state } from "./shared.js";
+import { $, CATS, DATA_URLS, ageMinutes, ageText, el, fmt, later, newer, pickSnapshot, summaryText, usualPct, usualText, visibleRows, state } from "./shared.js";
 import { setMapPickHandler, syncMap } from "./map.js";
 import { DONG_GEO_URL, LAYERS, layerUrls } from "./lib/layers.js";
 
@@ -185,18 +185,24 @@ function renderStamp() {
   }
   const at = data.source_at || data.generated_at || "";
   const age = ageMinutes(at);
-  const bits = [`${at.slice(11, 16)} 기준`];
+  const when = age != null && age >= 1440 ? at.slice(5, 16) : at.slice(11, 16);
+  const bits = [`${when} 기준`];
   if (age != null) bits.push(ageText(age));
   bits.push(`${data.ok}/${data.total}곳`);
   const text = bits.join(" · ");
-  const stale = age != null && age > STALE_MIN;
+  // generated_at is the collector's heartbeat (every 10 minutes). Fresh heartbeat + old source = Seoul's feed stalled.
+  const genAge = ageMinutes(data.generated_at);
+  let staleText = "";
+  if (age != null && age > STALE_MIN) staleText = genAge != null && genAge <= 20 ? "서울시 집계가 멈춰 있습니다." : "자료가 오래됐습니다.";
   const time = el("time", "stamp-time", text);
   if (at) time.dateTime = `${at.slice(0, 16).replace(" ", "T")}+09:00`;
-  const parts = [time, el("span", "stamp-summary", summaryText(data))];
-  if (stale) parts.push(el("span", "stamp-stale", "자료가 오래됐습니다. 수집이 밀리고 있습니다."));
+  const summaryLine = summaryText(data);
+  const parts = [time];
+  if (summaryLine) parts.push(el("span", "stamp-summary", summaryLine));
+  if (staleText) parts.push(el("span", "stamp-stale", staleText));
   stamp.replaceChildren(...parts);
-  if (sheetStamp) sheetStamp.textContent = stale ? `${text} · 자료가 오래됐습니다` : text;
-  if (summary) summary.textContent = summaryText(data);
+  if (sheetStamp) sheetStamp.textContent = staleText ? `${text} · ${staleText.replace(/\.$/, "")}` : text;
+  if (summary) summary.textContent = summaryLine || "지금 붐비는 곳부터";
 }
 
 function render() {
@@ -215,15 +221,14 @@ function render() {
     return;
   }
   const warming = data.warming !== false;
-  banner.hidden = !warming;
-  banner.textContent = warming
-    ? "평소 대비 %는 같은 요일·같은 30분대 자료가 2주 쌓인 뒤 표시됩니다. 지금은 붐빔 등급 순, 같은 등급은 인원 순입니다."
-    : "";
   const rows = visibleRows(data, state.cat, state.q);
+  // After the flip a 30-minute bin can still lack history; say so instead of silently reverting the order.
+  const noUsual = !warming && rows.length > 0 && !rows.some((p) => usualPct(p) != null);
+  banner.hidden = !(warming || noUsual);
+  if (warming) banner.textContent = "평소보다 %는 같은 요일·같은 30분대 자료가 2주 쌓인 뒤 표시됩니다. 지금은 붐빔 등급 순, 같은 등급은 인원 순입니다.";
+  else banner.textContent = noUsual ? "이 시간대는 평소 자료가 아직 없어 붐빔 등급 순입니다." : "";
   if (!rows.length) {
-    let empty = "이 분류에 장소가 없습니다.";
-    if (data.ok === 0) empty = "서울시 응답이 없어 보여드릴 자료가 없습니다.";
-    else if (state.q.trim()) empty = "이 이름에 맞는 장소가 없습니다.";
+    const empty = state.q.trim() ? "이 이름에 맞는 장소가 없습니다." : "이 분류에 장소가 없습니다.";
     board.replaceChildren(el("li", "empty", empty));
     syncMap();
     return;
@@ -254,16 +259,21 @@ function render() {
     li.append(btn);
     frag.append(li);
   });
+  // A background refresh must not throw a keyboard user out of the list.
+  const keep = document.activeElement?.closest?.(".row")?.dataset.name;
   board.replaceChildren(frag);
+  if (keep) board.querySelector(`[data-name="${CSS.escape(keep)}"] .row-btn`)?.focus({ preventScroll: true });
   syncMap();
+}
+
+function selectedRow() {
+  return state.selected ? $("board").querySelector(`[data-name="${CSS.escape(state.selected)}"]`) : null;
 }
 
 setMapPickHandler(() => {
   select(state.selected, false);
   render();
-  const name = state.selected;
-  if (!name) return;
-  const row = $("board").querySelector(`[data-name="${CSS.escape(name)}"]`);
+  const row = selectedRow();
   if (!row) return;
   row.scrollIntoView({ block: "nearest" });
   row.querySelector(".row-btn")?.focus({ preventScroll: true });
@@ -287,13 +297,15 @@ async function load() {
   loading = true;
   try {
     const hits = await Promise.all(DATA_URLS.map((url) => loadJson(url).catch(() => null)));
-    const next = hits.reduce(newer, null);
     const first = !state.data;
-    const changed = Boolean(next) && (!state.data || next.generated_at !== state.data.generated_at);
-    if (changed) state.data = next;
+    // Never let a slower or cached host roll the board back to an older snapshot.
+    const best = newer(state.data, pickSnapshot(hits));
+    const changed = Boolean(best) && best !== state.data;
+    if (changed) state.data = best;
     if (first) {
       readHash();
       render();
+      selectedRow()?.scrollIntoView({ block: "nearest" });
     } else if (changed) {
       render();
     }
@@ -303,6 +315,11 @@ async function load() {
 }
 
 load();
+window.addEventListener("hashchange", () => {
+  readHash();
+  render();
+  selectedRow()?.scrollIntoView({ block: "nearest" });
+});
 // The data moves every 10 minutes; a tab left open should follow it.
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible") load();
