@@ -1,4 +1,4 @@
-import { $, BOUNDS, RANK, hasCoords, visibleRows, state } from "./shared.js";
+import { $, BOUNDS, RANK, el, fmt, hasCoords, mapSnapshot, state } from "./shared.js";
 import { radiusPx, STYLE } from "./map-radius.js";
 import { bandIndex, dongCode, kstHour, livingSlice, metroFlow, quantileBreaks } from "./lib/layers.js";
 
@@ -9,7 +9,7 @@ const TILE_BOUNDS = [
   [38.5, 128.4],
 ];
 const PIN_ZOOM = 13;
-const FOCUS_ZOOM = 14;
+const FOCUS_ZOOM = 15;
 const TAP_RADIUS = 14;
 const TILE_FAIL_COPY = "지도를 불러오지 못했습니다. 목록은 그대로입니다.";
 
@@ -23,13 +23,15 @@ let pinsDrawn = null;
 let suppressZoomDraw = false;
 let frame = 0;
 let onPick = null;
+let gridScaleData = null;
+let gridBreaks = [];
 
 export function setMapPickHandler(fn) {
   onPick = fn;
 }
 
 function pinPlace(place, zoom) {
-  return zoom >= PIN_ZOOM && (place.level === "붐빔" || place.level === "약간 붐빔");
+  return (!state.timeMode || state.timeMode === "now") && !state.compare && zoom >= PIN_ZOOM && (place.level === "붐빔" || place.level === "약간 붐빔");
 }
 
 let theme = null;
@@ -39,19 +41,23 @@ function token(name) {
 }
 
 function readTheme() {
-  theme = { ink: token("--text") };
+  theme = { ink: token("--text"), down: token("--change-down"), neutral: token("--chart-neutral") };
   for (const [level, s] of Object.entries(STYLE)) theme[level] = token(s.token);
 }
 
-function circleStyle(place, peers, selected) {
+function circleStyle(place, peers, selected, referenceMax) {
   const s = STYLE[place.level] || STYLE.보통;
-  const color = theme[place.level] || theme.보통;
+  const temporal = state.timeMode && state.timeMode !== "now";
+  const compare = (temporal && state.compare) || state.timeMode === "usual";
+  const color = compare
+    ? !Number.isFinite(place.delta) || Math.abs(place.delta) < 5 ? theme.neutral : place.delta < 0 ? theme.down : theme.붐빔
+    : theme[place.level] || theme.보통;
   return {
-    radius: radiusPx(place, peers),
+    radius: temporal || compare ? Math.max(4, 26 * Math.sqrt(Math.max(0, place.mid || 0) / referenceMax)) : radiusPx(place, peers),
     color: selected ? theme.ink : color,
     fillColor: color,
     weight: selected ? 2 : 1,
-    fillOpacity: s.fillOpacity,
+    fillOpacity: temporal || compare ? 0.65 : s.fillOpacity,
   };
 }
 
@@ -81,11 +87,22 @@ function drawGroup(id, enabled, paint) {
 }
 
 function hoverTip(layer, text) {
-  layer.bindTooltip(text, {
+  layer.bindTooltip(el("span", "", text), {
     direction: "top",
     opacity: 1,
-    className: "place-label",
+    className: "place-label detail-tooltip",
   });
+}
+
+function placeTip(place) {
+  const mode = state.timeMode || "now";
+  const stamp = place.source_at || "시각 자료 없음";
+  const latest = (state.data?.places || []).find((p) => p.name === place.name);
+  const source = mode === "forecast" ? `${stamp} 예측 (${latest?.source_at || "시각 자료 없음"} 집계 기준)` : `${stamp} 집계`;
+  const count = place.mid == null ? "인구 자료 없음" : `인구 약 ${fmt(place.mid)}명`;
+  const base = mode === "usual" ? "평소 대비" : "최신 집계 대비";
+  const delta = Number.isFinite(place.delta) ? `${base} ${place.delta > 0 ? "+" : ""}${place.delta}%` : "비교 자료 없음";
+  return `${place.name} · ${source} · ${place.level || "등급 자료 없음"} · ${count} · ${delta} · 구역 대표 지점이며 이 지점 주변의 국소 밀도를 뜻하지 않습니다.`;
 }
 
 function drawDong(g) {
@@ -188,6 +205,37 @@ function drawToday(g) {
   }
 }
 
+function drawGrid(g) {
+  const data = state.layerData.grid;
+  const slice = data?.slices?.[state.timeAt];
+  if (!slice || !state.gridGeo || map.getZoom() < PIN_ZOOM) return;
+  if (gridScaleData !== data) {
+    gridBreaks = quantileBreaks(Object.values(data.slices).flatMap((values) => Object.values(values)).filter(Number.isFinite));
+    gridScaleData = data;
+  }
+  const bounds = map.getBounds();
+  const date = String(data.ymd || "").replace(/^(\d{4})(\d{2})(\d{2})$/, "$1-$2-$3");
+  for (const feature of state.gridGeo.features || []) {
+    if (feature.geometry?.type !== "Point") continue;
+    const [lng, lat] = feature.geometry.coordinates;
+    if (!Number.isFinite(lat) || !Number.isFinite(lng) || !bounds.contains([lat, lng])) continue;
+    const cell = feature.properties?.CELL_ID;
+    if (cell == null) continue;
+    const population = slice[cell];
+    const available = Number.isFinite(population) && population >= 0;
+    const layer = window.L.circleMarker([lat, lng], {
+      radius: 4,
+      color: available ? theme.ink : theme.neutral,
+      fillColor: available ? theme.ink : theme.neutral,
+      weight: 0.5,
+      fillOpacity: available ? 0.2 + bandIndex(population, gridBreaks) * 0.16 : 0.12,
+    });
+    hoverTip(layer, `${date} ${state.timeAt}:00 KST · 격자 ${cell} · ${available ? `생활인구 ${fmt(population)}명` : "비식별/자료 없음"} · 250m 격자 중심점이며 원은 실제 격자 경계가 아닙니다.`);
+    layer.on("click", () => layer.openTooltip());
+    g.addLayer(layer);
+  }
+}
+
 function drawOverlays() {
   if (!map) return;
   if (!overlays) overlays = window.L.layerGroup().addTo(map);
@@ -196,13 +244,17 @@ function drawOverlays() {
   const zoom = map.getZoom();
   pinsDrawn = zoom >= PIN_ZOOM;
   const layers = state.layers || {};
+  const current = !state.timeMode || state.timeMode === "now";
 
-  drawGroup("dong", layers.dong, drawDong);
+  drawGroup("dong", current && layers.dong, drawDong);
+  drawGroup("grid", state.timeMode === "grid", drawGrid);
 
-  if (state.data && layers.now) {
-    const rows = visibleRows(state.data, state.cat, state.q);
+  if (state.timeMode !== "grid" && state.data && (!current || layers.now)) {
+    const rows = (mapSnapshot().places || []).filter((p) => p.state === "fresh" && (state.cat === "전체" || p.category === state.cat));
+    const reference = state.data.places || [];
+    const referenceMax = Math.max(1, ...reference.map((p) => p.mid || 0));
     const peersByLevel = new Map();
-    for (const p of rows) {
+    for (const p of reference) {
       if (!peersByLevel.has(p.level)) peersByLevel.set(p.level, []);
       peersByLevel.get(p.level).push(p);
     }
@@ -219,11 +271,11 @@ function drawOverlays() {
         });
         layer = window.L.marker([place.lat, place.lng], { icon, title: place.name });
       } else {
-        layer = window.L.circleMarker([place.lat, place.lng], circleStyle(place, peersByLevel.get(place.level), selected));
+        layer = window.L.circleMarker([place.lat, place.lng], circleStyle(place, peersByLevel.get(place.level), selected, referenceMax));
       }
       const pick = () => {
         state.selected = place.name;
-        state.focus = false;
+        state.focus = true;
         onPick?.();
       };
       layer.on("click", pick);
@@ -232,9 +284,9 @@ function drawOverlays() {
         hit.on("click", pick);
         overlays.addLayer(hit);
       }
-      if (zoom >= PIN_ZOOM) {
+      if (zoom >= PIN_ZOOM && current && !state.compare) {
         const pad = layer.getRadius ? Math.round(layer.getRadius()) + 4 : 12;
-        layer.bindTooltip(place.name, {
+        layer.bindTooltip(el("span", "", place.name), {
           permanent: true,
           direction: "right",
           offset: [pad, 0],
@@ -242,8 +294,7 @@ function drawOverlays() {
           opacity: 1,
         });
       } else {
-        // At city zoom color is the only cue; the hover text pairs it with the level word.
-        hoverTip(layer, place.level ? `${place.name} ${place.level}` : place.name);
+        hoverTip(layer, placeTip(place));
       }
       overlays.addLayer(layer);
       if (selected) selectedLayer = layer;
@@ -254,9 +305,9 @@ function drawOverlays() {
     }
   }
 
-  drawGroup("metro", layers.metro, drawMetro);
-  drawGroup("street", layers.street, (g) => drawStreet(g, zoom));
-  drawGroup("today", layers.today, drawToday);
+  drawGroup("metro", current && layers.metro, drawMetro);
+  drawGroup("street", current && layers.street, (g) => drawStreet(g, zoom));
+  drawGroup("today", current && layers.today, drawToday);
 }
 
 function showStatus(status, text) {
@@ -277,7 +328,7 @@ function createMap(pane, status) {
   pane.setAttribute("aria-label", "서울 지도");
   tiles = window.L.tileLayer(tileUrl(), {
     attribution:
-      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+      '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a> · <a href="https://data.seoul.go.kr/dataList/OA-22784/S/1/datasetView.do">서울시</a> · <a href="https://sgis.kostat.go.kr/">SGIS</a>',
     maxZoom: 18,
     bounds: TILE_BOUNDS,
   })
@@ -300,6 +351,9 @@ function createMap(pane, status) {
     if (suppressZoomDraw) return;
     if (pinsDrawn !== null && pinsDrawn === map.getZoom() >= PIN_ZOOM) return;
     drawOverlays();
+  });
+  map.on("moveend", () => {
+    if (state.timeMode === "grid") drawOverlays();
   });
 }
 
@@ -330,7 +384,7 @@ export function syncMap() {
   frame = requestAnimationFrame(() => {
     map.invalidateSize();
     if (state.focus && state.selected) {
-      const place = (state.data.places || []).find((p) => p.name === state.selected && hasCoords(p));
+      const place = (mapSnapshot().places || []).find((p) => p.name === state.selected && hasCoords(p));
       if (place) {
         suppressZoomDraw = true;
         map.setView([place.lat, place.lng], FOCUS_ZOOM, { animate: false });

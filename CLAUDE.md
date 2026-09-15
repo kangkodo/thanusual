@@ -17,6 +17,10 @@ First screen is a ranked list in a side panel (phone: bottom sheet). The map is 
 
 ## Map
 
+Time exploration: `timeline.json` persists the last 48 hours independently of git history. `current.json` includes all available `forecasts` plus legacy `forecast_2h`. UI separates recent/history/forecast/usual and 250m modes; no interpolation of missing observations. Comparison is selected time minus latest, divided by latest (usual uses same-weekday baseline).
+
+250m detail: official `Se250MSpopLocalResd` (OA-22784, 공공누리 1유형), daily `grid.json` with source date and 3-hour slices. Domestic living-population estimates, typically D-4, never live crowds. `vendor/seoul-grid.geojson` contains official viewer CELL_ID center points, not boundaries. Null suppression is not zero. Daily fixed quantile scale keeps time changes comparable. National SGIS boundaries and telecom-derived official Seoul feeds are reused; do not add unrelated national statistics just to increase source count.
+
 - Engine: Leaflet 1.9.x vendored in `vendor/leaflet/`. Overlays (circles, HTML pins) are ours. No `leaflet.heat`.
 - Client tiles: same-origin `/tiles/{light|dark}/{z}/{x}/{y}{r}.png` only (style follows `prefers-color-scheme`; the bare `/tiles/{z}/{x}/{y}` form still means light). Pages Function injects `CARTO_API_KEY`. Never put that key in git or the browser bundle. Do **not** hit `tile.openstreetmap.org`.
 - Local tiles need `npx wrangler pages dev .` — not `python -m http.server`.

@@ -1,6 +1,7 @@
 import { $, CATS, DATA_URLS, ageMinutes, ageText, el, fmt, later, newer, pickSnapshot, summaryText, usualPct, usualText, visibleRows, state } from "./shared.js";
 import { setMapPickHandler, syncMap } from "./map.js";
 import { DONG_GEO_URL, LAYERS, daysAgo, kstDate, kstHour, layerUrls, livingSlice, metroFlow } from "./lib/layers.js";
+import { mapSnapshot, timeOptions, distanceKm, hasCoords } from "./shared.js";
 
 const STALE_MIN = 60;
 const REFRESH_MS = 5 * 60 * 1000;
@@ -84,6 +85,7 @@ function bindLayers() {
 function updateLayerNote() {
   const note = $("layer-note");
   if (!note) return;
+  if (state.timeMode !== "now") { note.hidden = true; return; }
   const bits = [];
   const hour = kstHour();
   const living = state.layerData.dong;
@@ -200,7 +202,7 @@ function renderStamp() {
   const at = data.source_at || data.generated_at || "";
   const age = ageMinutes(at);
   const when = age != null && age >= 1440 ? at.slice(5, 16) : at.slice(11, 16);
-  const bits = [`${when} 기준`];
+  const bits = [`최근 ${when} 기준`];
   if (age != null) bits.push(ageText(age));
   bits.push(`${data.ok}/${data.total}곳`);
   const text = bits.join(" · ");
@@ -216,7 +218,7 @@ function renderStamp() {
   if (staleText) parts.push(" ", el("span", "stamp-stale", staleText));
   stamp.replaceChildren(...parts);
   if (sheetStamp) sheetStamp.textContent = staleText ? `${text} · ${staleText.replace(/\.$/, "")}` : text;
-  if (summary) summary.textContent = summaryLine || "지금 붐비는 곳부터";
+  if (summary) summary.textContent = state.timeMode === "now" ? summaryLine || "지금 붐비는 곳부터" : state.timeMode === "grid" ? "250m 상세 분포 · 목록은 최근 장소 집계" : `${{history:"과거 집계",forecast:"예측",usual:"평소 대비"}[state.timeMode]} · ${state.timeAt || "같은 요일·시간대"}`;
 }
 
 function render() {
@@ -226,7 +228,9 @@ function render() {
   bindBoard();
   bindLayers();
   updateLayerNote(); // the note names the hour the map is drawing; keep them in step as time passes
-  const data = state.data;
+  renderTime();
+  renderDetail();
+  const data = state.data ? mapSnapshot() : null;
   const banner = $("banner");
   const board = $("board");
   renderStamp();
@@ -239,11 +243,11 @@ function render() {
   const rows = visibleRows(data, state.cat, state.q);
   // After the flip a 30-minute bin can still lack history; say so instead of silently reverting the order.
   const noUsual = !warming && rows.length > 0 && !rows.some((p) => usualPct(p) != null);
-  banner.hidden = !(warming || noUsual);
+  banner.hidden = state.timeMode !== "now" || !(warming || noUsual);
   if (warming) banner.textContent = "평소보다 %는 같은 요일·같은 30분대 자료가 2주 쌓인 뒤 표시됩니다. 지금은 붐빔 등급 순, 같은 등급은 인원 순입니다.";
   else banner.textContent = noUsual ? "이 시간대는 평소 자료가 아직 없어 붐빔 등급 순입니다." : "";
   if (!rows.length) {
-    const empty = state.q.trim() ? "이 이름에 맞는 장소가 없습니다." : "이 분류에 장소가 없습니다.";
+    const empty = state.timeMode !== "now" ? "선택한 시각의 자료가 없습니다. 다른 시각이나 최근 집계를 선택하세요." : state.q.trim() ? "이 이름에 맞는 장소가 없습니다. 지도에는 주변 장소가 유지됩니다." : "이 분류에 장소가 없습니다.";
     board.replaceChildren(el("li", "empty", empty));
     syncMap();
     return;
@@ -266,7 +270,7 @@ function render() {
     value.append(el("span", "count", fmt(place.mid)));
     const meta = el("div", "meta");
     const lvl = el("span", place.level ? `level lvl-${place.level.replace(/\s+/g, "-")}` : "level", place.level || "등급 없음");
-    const fc = later(place);
+    const fc = ["now", "grid"].includes(state.timeMode) ? later(place) : { label: state.timeMode === "usual" ? "평소 대비" : "최근 대비", value: place.delta == null ? "자료 없음" : `${place.delta > 0 ? "+" : ""}${place.delta}%` };
     const lat = el("span", "later");
     lat.append(el("span", "later-label", fc.label), " ", el("span", "later-value", fc.value));
     meta.append(lvl, lat);
@@ -280,6 +284,63 @@ function render() {
   if (keep) board.querySelector(`[data-name="${CSS.escape(keep)}"] .row-btn`)?.focus({ preventScroll: true });
   syncMap();
 }
+
+function renderTime() {
+  document.querySelector(".layer-stack").hidden = state.timeMode !== "now";
+  const options = timeOptions();
+  if (options.length && !options.includes(state.timeAt)) state.timeAt = options.at(-1);
+  const slider = $("time-slider");
+  slider.hidden = !options.length;
+  slider.max = Math.max(0, options.length - 1);
+  slider.value = Math.max(0, options.indexOf(state.timeAt));
+  slider.setAttribute("aria-valuetext", state.timeAt);
+  $("compare-label").hidden = !["history", "forecast"].includes(state.timeMode);
+  const kind = { now: "최근 집계 · 서울시 집계 약 30분 지연", history: options.length ? `${state.timeAt} 집계` : "과거 자료 수집 전입니다. 배포 후 최대 48시간 보관합니다.", forecast: options.length ? `${state.timeAt} 예측 · 관측값 아님` : "제공된 예측 자료가 없습니다.", usual: "같은 요일·30분대의 과거 평균 대비 · 표본 부족은 회색" };
+  kind.grid = options.length && state.gridGeo ? `${state.layerData.grid.ymd} · ${state.timeAt}시 · 내국인 생활인구 추정(실시간 아님). 확대 후 점을 누르면 인원이 나옵니다. 진할수록 많음 · 회색 비식별/누락 · 좌표 없는 격자 제외. 목록은 최근 장소 집계.` : "250m 자료를 불러오지 못했습니다. 수집 완료 후 사용할 수 있습니다.";
+  $("time-note").textContent = kind[state.timeMode] + (state.timeMode === "grid" ? "" : state.timeMode === "usual" || (state.compare && options.length) ? " · 주황 증가 / 파랑 감소 / 회색 비교 불가·비슷" : " · 점은 구역 대표 위치");
+}
+
+function renderDetail() {
+  const box = $("place-detail");
+  const original = state.data?.places.find((p) => p.name === state.selected);
+  box.hidden = !original;
+  if (!original) return;
+  const p = mapSnapshot().places.find((p) => p.name === state.selected);
+  const close = el("button", "detail-close", "닫기");
+  close.type = "button";
+  close.onclick = () => { select(null, false); render(); };
+  const title = el("h2", "detail-title", original.name);
+  const count = p ? `${p.level || "등급 없음"} · ${fmt(p.min ?? p.mid)}~${fmt(p.max ?? p.mid)}명` : "이 시각 자료 없음";
+  const when = state.timeMode === "forecast" ? `${state.timeAt} 예측` : p?.source_at || state.data.source_at;
+  const nearby = (state.data.places || []).filter((x) => x.name !== original.name && hasCoords(x) && x.state === "fresh")
+    .map((x) => ({ ...x, km: distanceKm(original, x) })).sort((a, b) => a.km - b.km).slice(0, 3);
+  const links = el("div", "nearby");
+  for (const x of nearby) {
+    const current = mapSnapshot().places.find((p) => p.name === x.name);
+    const btn = el("button", "nearby-place", `${x.name} · 직선 ${x.km.toFixed(1)}km · ${current?.level || "이 시각 자료 없음"}`);
+    btn.type = "button";
+    btn.onclick = () => { select(x.name, true); state.cat = "전체"; state.q = ""; $("q").value = ""; render(); };
+    links.append(btn);
+  }
+  box.replaceChildren(close, title, el("p", "", count), el("p", "detail-note", when || "시각 없음"), el("p", "detail-note", "구역 전체 추정 인구입니다. 골목·건물별 인원은 알 수 없습니다."), el("p", "", "가까운 다른 장소"), links);
+}
+
+$("time-mode").addEventListener("change", async (e) => {
+  state.timeMode = e.target.value;
+  state.timeAt = "";
+  if (state.timeMode === "now") { state.compare = false; $("time-compare").checked = false; }
+  render();
+  if (["history", "grid"].includes(state.timeMode)) $("time-note").textContent = "선택한 지도 자료를 불러오는 중입니다.";
+  if (state.timeMode === "history") state.timeline = await loadFirst(layerUrls("timeline.json"));
+  if (state.timeMode === "grid") {
+    state.layerData.grid ||= await loadFirst(layerUrls("grid.json"));
+    state.gridGeo ||= await fetch("./vendor/seoul-grid.geojson").then((r) => r.ok ? r.json() : null).catch(() => null);
+    state.focus = Boolean(state.selected);
+  }
+  render();
+});
+$("time-slider").addEventListener("input", (e) => { state.timeAt = timeOptions()[Number(e.target.value)] || ""; render(); });
+$("time-compare").addEventListener("change", (e) => { state.compare = e.target.checked; render(); });
 
 function selectedRow() {
   return state.selected ? $("board").querySelector(`[data-name="${CSS.escape(state.selected)}"]`) : null;
@@ -295,7 +356,7 @@ setMapPickHandler(() => {
 });
 
 async function loadJson(url) {
-  const res = await fetch(`${url}${url.includes("?") ? "&" : "?"}t=${Date.now()}`, { cache: "no-store" });
+  const res = await fetch(`${url}${url.includes("?") ? "&" : "?"}t=${Date.now()}`, { cache: "no-store", signal: AbortSignal.timeout(15000) });
   if (!res.ok) throw new Error(String(res.status));
   return res.json();
 }
@@ -324,11 +385,12 @@ async function load() {
     const best = newer(state.data, pickSnapshot(hits));
     const changed = Boolean(best) && best !== state.data;
     if (changed) state.data = best;
+    if (state.timeMode === "history") state.timeline = await loadFirst(layerUrls("timeline.json"));
     if (first) {
       readHash();
       render();
       selectedRow()?.scrollIntoView({ block: "nearest" });
-    } else if (changed) {
+    } else if (changed || state.timeMode === "history") {
       render();
     }
   } finally {

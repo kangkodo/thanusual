@@ -35,28 +35,37 @@ def mid(lo, hi) -> int | None:
         return None
 
 
+def forecasts(row: dict) -> list[dict]:
+    items = []
+    for item in row.get("FCST_PPLTN") or []:
+        if not isinstance(item, dict) or parse_time(item.get("FCST_TIME")) is None:
+            continue
+        items.append({
+            "at": item.get("FCST_TIME"),
+            "level": item.get("FCST_CONGEST_LVL"),
+            "min": _int(item.get("FCST_PPLTN_MIN")),
+            "max": _int(item.get("FCST_PPLTN_MAX")),
+            "mid": mid(item.get("FCST_PPLTN_MIN"), item.get("FCST_PPLTN_MAX")),
+        })
+    return sorted(items, key=lambda item: parse_time(item["at"]))
+
+
 def forecast_at(row: dict, source: datetime.datetime | None, hours: int) -> dict | None:
-    items = row.get("FCST_PPLTN") or []
+    items = forecasts(row)
     if not items or source is None:
         return None
     target = source + datetime.timedelta(hours=hours)
     best = None
     best_dt = None
     for item in items:
-        t = parse_time(item.get("FCST_TIME"))
+        t = parse_time(item.get("at"))
         if t is None:
             continue
         if best is None or abs((t - target).total_seconds()) < abs((best_dt - target).total_seconds()):
             best, best_dt = item, t
     if best is None:
         return None
-    return {
-        "at": best.get("FCST_TIME"),
-        "level": best.get("FCST_CONGEST_LVL"),
-        "min": _int(best.get("FCST_PPLTN_MIN")),
-        "max": _int(best.get("FCST_PPLTN_MAX")),
-        "mid": mid(best.get("FCST_PPLTN_MIN"), best.get("FCST_PPLTN_MAX")),
-    }
+    return best
 
 
 def _int(value) -> int | None:
@@ -127,6 +136,7 @@ def collect(places: list[dict], key: str) -> dict:
                     "mid": None,
                     "source_at": None,
                     "forecast_2h": None,
+                    "forecasts": [],
                 }
             )
         else:
@@ -142,6 +152,7 @@ def collect(places: list[dict], key: str) -> dict:
                     "mid": mid(row.get("AREA_PPLTN_MIN"), row.get("AREA_PPLTN_MAX")),
                     "source_at": source_at,
                     "forecast_2h": forecast_at(row, source_dt, 2),
+                    "forecasts": forecasts(row),
                 }
             )
         if i + 1 < len(places) and err != "budget":

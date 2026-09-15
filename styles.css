@@ -17,6 +17,7 @@
   --focus: #0070f3;
   --hot: #c2410c;
   --calm: #0f766e;
+  --change-down: #0070f3;
   --chart-neutral: #8f8f8f;
 
   --sans: "Geist", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
@@ -66,6 +67,7 @@
     --focus: #52a8ff;
     --hot: #ff8a5b;
     --calm: #4fd1c5;
+    --change-down: #52a8ff;
     --chart-neutral: #8f8f8f;
   }
 }
@@ -541,3 +543,29 @@ main {
 }
 
 :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+.layer-menu, .time-panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-small); padding: var(--space-2) var(--space-3); font-size: var(--type-metadata); pointer-events: auto; }
+.layer-menu summary { cursor: pointer; min-height: 28px; }
+.layer-menu .layers { border: 0; padding: 0; }
+.time-panel { position: absolute; z-index: 1000; bottom: 2rem; left: var(--space-3); right: var(--space-3); max-width: 34rem; }
+.time-panel select { font: inherit; color: var(--text); background: var(--surface); min-height: 36px; margin: 0 var(--space-2); border: 1px solid var(--border); }
+.time-panel input[type=range] { display: block; width: 100%; min-height: 32px; }
+.time-panel [hidden] { display: none; }
+.time-panel p { color: var(--text-secondary); }
+.map-status { top: 4.5rem; bottom: auto; }
+.layer-stack[hidden] { display: none; }
+.leaflet-tooltip.detail-tooltip { white-space: normal; width: max-content; max-width: min(20rem, 70vw); padding: var(--space-2); background: var(--surface); border: 1px solid var(--border); }
+.place-detail { padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--border); overflow-y: auto; flex-shrink: 0; max-height: 40%; font-size: var(--type-compact); }
+.place-detail[hidden] { display: none; }
+.detail-title { font-size: var(--type-body); margin: 0; }
+.detail-close { float: right; }
+.detail-close, .nearby-place { color: var(--text); background: var(--surface); font: inherit; border: 1px solid var(--border); padding: var(--space-2); cursor: pointer; min-height: 36px; }
+.detail-note { color: var(--text-secondary); font-size: var(--type-metadata); }
+.nearby { display: flex; flex-direction: column; gap: var(--space-1); }
+.nearby-place { text-align: left; }
+@media (max-width: 47.99rem) {
+  .place-detail { max-height: 55%; }
+  .time-panel { bottom: 1.8rem; font-size: 12px; padding: var(--space-2); }
+  .layer-stack { max-width: min(16rem, calc(100% - 5.5rem)); }
+  .layer-menu[open] { max-height: 32dvh; overflow-y: auto; }
+}

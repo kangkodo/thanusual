@@ -24,6 +24,12 @@ jobs:
           SEOUL_API_KEY: ${{ secrets.SEOUL_API_KEY }}
         continue-on-error: true
         run: python scripts/collect_metro.py --out metro.json
+      - name: Fetch 250m living population
+        env:
+          SEOUL_API_KEY: ${{ secrets.SEOUL_API_KEY }}
+        continue-on-error: true
+        timeout-minutes: 12
+        run: python scripts/collect_grid.py --out grid.json
       - name: Fetch today
         env:
           SEOUL_API_KEY: ${{ secrets.SEOUL_API_KEY }}
@@ -35,13 +41,13 @@ jobs:
           path: data-branch
       - name: Publish daily snapshots to data branch
         run: |
-          for f in living.json metro.json today.json; do
+          for f in living.json metro.json today.json grid.json; do
             if [ -f "$f" ]; then cp "$f" data-branch/; fi
           done
           cd data-branch
           git config user.name "thanusual-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          for f in living.json metro.json today.json; do
+          for f in living.json metro.json today.json grid.json; do
             if [ -f "$f" ]; then git add "$f"; fi
           done
           if git diff --staged --quiet; then

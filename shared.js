@@ -25,7 +25,42 @@ export const state = {
   layers: defaultLayerState(),
   layerData: {},
   dongGeo: null,
+  timeMode: "now",
+  timeAt: "",
+  compare: false,
+  timeline: null,
+  gridGeo: null,
 };
+
+export function timeOptions() {
+  if (state.timeMode === "grid") return Object.keys(state.layerData.grid?.slices || {}).sort();
+  if (state.timeMode === "history") return (state.timeline?.frames || []).map((f) => f.at);
+  if (state.timeMode === "forecast") return [...new Set((state.data?.places || []).flatMap((p) => (p.forecasts || (p.forecast_2h ? [p.forecast_2h] : [])).map((f) => f.at)))].sort();
+  return [];
+}
+
+// Match by place name and exact timestamp. Missing observations are never interpolated.
+export function mapSnapshot() {
+  const data = state.data || { places: [] };
+  if (state.timeMode === "now" || state.timeMode === "grid") return data;
+  const frame = state.timeline?.frames?.find((f) => f.at === state.timeAt);
+  const history = new Map((frame?.places || []).map((p) => [p.name, p]));
+  const places = data.places.flatMap((p) => {
+    if (state.timeMode === "usual") return p.state === "fresh" ? [{ ...p, delta: usualPct(p) }] : [];
+    const observation = state.timeMode === "history" ? history.get(p.name) : (p.forecasts || (p.forecast_2h ? [p.forecast_2h] : [])).find((f) => f.at === state.timeAt);
+    if (!observation || !Number.isFinite(observation.mid)) return [];
+    return [{ ...p, ...observation, state: "fresh", usual: null, forecast_2h: null, source_at: observation.source_at || observation.at || frame.at,
+      delta: p.state === "fresh" && p.mid > 0 ? Math.round((observation.mid / p.mid - 1) * 100) : null }];
+  });
+  return { ...data, places, warming: true };
+}
+
+export function distanceKm(a, b) {
+  const rad = Math.PI / 180;
+  const dLat = (b.lat - a.lat) * rad, dLng = (b.lng - a.lng) * rad;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(dLng / 2) ** 2;
+  return 6371 * 2 * Math.asin(Math.sqrt(Math.min(1, h)));
+}
 
 export const fmt = (n) => (n == null || Number.isNaN(n) ? "자료 없음" : n.toLocaleString("ko-KR"));
 

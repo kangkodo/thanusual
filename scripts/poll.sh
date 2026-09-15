@@ -19,6 +19,8 @@ publish() (
   git fetch -q origin data && git reset -q --hard FETCH_HEAD || return 1
   # Fold this sample into the 평소 baseline and stamp current.json with each place's usual value.
   python ../scripts/baseline.py --current ../current.json --baseline baseline.json || { echo "baseline failed"; touch ../baseline-failed; }
+  # Persist observations as a file: monthly data-branch squash removes commit history.
+  python ../scripts/timeline.py --current ../current.json --timeline timeline.json || echo "timeline failed; preserving previous history"
   cp ../current.json current.json
   [ -f ../street.json ] && cp ../street.json street.json
   git add -A .

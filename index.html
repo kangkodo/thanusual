@@ -37,19 +37,27 @@
           <label class="sr-only" for="q">장소 이름</label>
           <input id="q" type="search" name="q" placeholder="장소 이름" autocomplete="off" enterkeyhint="search">
         </form>
+        <section id="place-detail" class="place-detail" aria-label="선택한 장소" hidden></section>
         <p class="note" id="banner" hidden></p>
         <nav class="tabs" id="tabs" aria-label="장소 분류"></nav>
         <ol class="board" id="board"></ol>
       </main>
       <footer class="foot">
-        <p class="sources">서울 열린데이터광장 · <a href="https://github.com/kangkodo/thanusual">소스</a></p>
+        <details class="sources"><summary>데이터 출처와 한계</summary><p><a href="https://data.seoul.go.kr/dataVisual/seoul/guide.do">서울시 · KT/SKT 인구 추정</a> · <a href="https://data.seoul.go.kr/dataList/OA-22784/S/1/datasetView.do">서울시 250m 내국인 생활인구(공공누리 1유형)</a> · <a href="https://sgis.kostat.go.kr/">SGIS 행정동 경계</a> · CARTO/OSM 지도. 장소 점은 구역 대표 위치이며 골목별 밀집도가 아닙니다. 250m 점은 격자 중심이며 경계가 아닙니다. 과거는 자체 수집분, 예측은 서울시 제공값입니다.</p><a href="https://github.com/kangkodo/thanusual">소스</a></details>
       </footer>
     </div>
     <div class="map-shell">
       <div class="layer-stack">
-        <form class="layers" id="layers" aria-label="지도 레이어"></form>
+        <details class="layer-menu"><summary>지도 레이어</summary><form class="layers" id="layers" aria-label="지도 레이어"></form></details>
         <p class="layer-note" id="layer-note" hidden></p>
       </div>
+      <section class="time-panel" aria-label="지도 시간 비교">
+        <label for="time-mode">지도 보기</label>
+        <select id="time-mode"><option value="now">최근 집계</option><option value="history">지난 48시간</option><option value="forecast">시간별 예측</option><option value="usual">평소 대비</option><option value="grid">250m 상세 분포</option></select>
+        <label id="compare-label" hidden><input id="time-compare" type="checkbox"> 최근 집계와 차이</label>
+        <input id="time-slider" type="range" min="0" max="0" value="0" aria-label="지도에 표시할 시각" hidden>
+        <p id="time-note" role="status"></p>
+      </section>
       <p class="map-status" id="map-status" role="status" hidden></p>
       <div id="map" tabindex="-1"></div>
     </div>
