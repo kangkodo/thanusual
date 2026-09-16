@@ -83,6 +83,21 @@ class BaselineTest(unittest.TestCase):
         baseline.update(b, {"places": [{"name": f"P{i}", "state": "fresh", "mid": 12345, "source_at": "2026-09-07 19:05"} for i in range(121)]})
         self.assertLess(len(json.dumps(b, separators=(",", ":"))), 1_400_000)
 
+    def test_holiday_samples_are_never_accumulated(self):
+        b = {}
+        baseline.update(b, snap("2026-09-24 19:05", 500))          # 추석 연휴 목요일
+        idx = baseline.slot_index(baseline.parse_time("2026-09-24 19:05"))
+        self.assertEqual((b["places"]["A"]["n"][idx], b["places"]["A"]["sum"][idx]), (0, 0))
+
+    def test_holiday_still_shows_usual_built_from_ordinary_weeks(self):
+        b = {}
+        for day in (10, 17):                                       # 앞선 목요일 두 번
+            for minute in ("05", "15", "25"):
+                baseline.update(b, snap(f"2026-09-{day} 19:{minute}", 1000))
+        cur = baseline.update(b, snap("2026-09-24 19:05", 300))     # 추석에도 「평소보다」는 나온다
+        self.assertEqual(cur["places"][0]["usual"], {"n": 6, "mid": 1000})
+        idx = baseline.slot_index(baseline.parse_time("2026-09-24 19:05"))
+        self.assertEqual(b["places"]["A"]["n"][idx], 2)            # 9/10, 9/17 뿐
 
 if __name__ == "__main__":
     unittest.main()
