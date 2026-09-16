@@ -549,7 +549,8 @@ main {
 .layer-menu .layers { border: 0; padding: 0; }
 .time-panel { position: absolute; z-index: 1000; bottom: 2rem; left: var(--space-3); right: var(--space-3); max-width: 34rem; }
 .time-panel select { font: inherit; color: var(--text); background: var(--surface); min-height: 36px; margin: 0 var(--space-2); border: 1px solid var(--border); }
-.time-panel input[type=range] { display: block; width: 100%; min-height: 32px; }
+.time-panel input[type=range]:not([hidden]) { display: block; width: 100%; min-height: 32px; }
+/* :not([hidden]) so the range keeps losing to [hidden]; both selectors otherwise tie. */
 .time-panel [hidden] { display: none; }
 .time-panel p { color: var(--text-secondary); }
 .map-status { top: 4.5rem; bottom: auto; }

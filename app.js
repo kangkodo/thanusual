@@ -5,7 +5,7 @@ import { mapSnapshot, timeOptions, distanceKm, hasCoords } from "./shared.js";
 
 const STALE_MIN = 60;
 const REFRESH_MS = 5 * 60 * 1000;
-const SNAPSHOT_FRESH_MIN = 20;  // the collector publishes every 10 minutes
+const SNAPSHOT_FRESH_MIN = 20;  // generated_at is the collector heartbeat, every 10 minutes
 const PHONE = "(max-width: 47.99rem)";
 
 function renderTabs() {
@@ -367,7 +367,9 @@ async function loadJson(url) {
 // and pickSnapshot still keeps a slower host from rolling the board back.
 async function loadSnapshot() {
   const first = await loadJson(DATA_URLS[0]).catch(() => null);
-  const age = first ? ageMinutes(first.source_at || first.generated_at) : null;
+  // generated_at, not source_at: the Seoul feed is always about 30 minutes behind by design,
+  // so judging the host by source_at would send us to the other two on every refresh.
+  const age = first ? ageMinutes(first.generated_at || first.source_at) : null;
   if (first && first.ok > 0 && age != null && age <= SNAPSHOT_FRESH_MIN) return first;
   const rest = await Promise.all(DATA_URLS.slice(1).map((url) => loadJson(url).catch(() => null)));
   return pickSnapshot([first, ...rest]);
