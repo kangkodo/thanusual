@@ -12,11 +12,20 @@ from pathlib import Path
 from collect import KST, parse_time
 
 FIELDS = ("name", "mid", "min", "max", "level", "source_at")
+RETENTION_HOURS = 48
+# One frame per half hour. The source itself lags about 30 minutes, so 10-minute frames
+# tripled the file for detail the data cannot show: 3.7MB against 1.2MB for the same span.
+STEP_MINUTES = 30
+MAX_FRAMES = RETENTION_HOURS * 60 // STEP_MINUTES
+
+
+def bucket(dt: datetime.datetime) -> datetime.datetime:
+    return dt.replace(minute=dt.minute // STEP_MINUTES * STEP_MINUTES, second=0, microsecond=0)
 
 
 def update(timeline: dict, current: dict, now: datetime.datetime | None = None) -> dict:
     now = (now or datetime.datetime.now(KST)).astimezone(KST).replace(tzinfo=None)
-    cutoff = now - datetime.timedelta(hours=48)
+    cutoff = now - datetime.timedelta(hours=RETENTION_HOURS)
     at = parse_time(current.get("source_at"))
     places = [
         {key: place.get(key) for key in FIELDS}
@@ -33,13 +42,13 @@ def update(timeline: dict, current: dict, now: datetime.datetime | None = None) 
     for frame in timeline.get("frames", []):
         dt = parse_time(frame.get("at"))
         if dt is not None and cutoff <= dt <= now and frame.get("places"):
-            frames[dt] = frame
+            frames[bucket(dt)] = frame
     if cutoff <= at <= now:
-        frames[at] = {"at": current["source_at"], "places": places}
+        frames[bucket(at)] = {"at": current["source_at"], "places": places}
     return {
         "version": 1,
         "generated_at": now.strftime("%Y-%m-%d %H:%M:%S"),
-        "frames": [frames[dt] for dt in sorted(frames)[-288:]],
+        "frames": [frames[dt] for dt in sorted(frames)[-MAX_FRAMES:]],
     }
 
 
