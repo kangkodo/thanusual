@@ -7,6 +7,8 @@ Index = weekday * 144 + hour * 6 + minute // 10, from the sample's source_at (th
 One sample per place per day per slot counts. usual = mean of mid over the same weekday and 30-minute bin
 (3 slots) in past weeks; today's samples are excluded so a place never compares against itself.
 Shown when n >= MIN_N (6 = two weeks of three slots). warming flips once and stays flipped.
+Public holidays still get a usual value, but their samples are never accumulated: one 추석
+sample would sit in that weekday's mean for good, and there is no window to age it out.
 ponytail: mean, not median; a festival week skews it. Store per-week samples if that shows.
 """
 from __future__ import annotations
@@ -20,6 +22,17 @@ SLOTS = 144
 WEEK = 7 * SLOTS
 BIN = 3      # 10-minute slots per bin: weekday x 30 minutes
 MIN_N = 6    # two weeks of a full bin
+
+# Days whose samples are shown but not accumulated. Hand-kept: lunar holidays (설날, 추석,
+# 부처님오신날) and substitute holidays move every year, so add next year's before January.
+# ponytail: a literal set, not a holiday library or an API call. Seven dates a year.
+HOLIDAYS = frozenset({
+    "2026-09-24", "2026-09-25", "2026-09-26",  # 추석 연휴; 9/26 is a Saturday and the
+                                               # substitute rule needs a Sunday, so no 9/28
+    "2026-10-03", "2026-10-05",                # 개천절 and its substitute Monday
+    "2026-10-09",                              # 한글날
+    "2026-12-25",                              # 성탄절
+})
 
 
 def parse_time(value):
@@ -74,7 +87,7 @@ def update(baseline: dict, current: dict) -> dict:
             entry["today"] = {}
         idx = slot_index(dt)
         place["usual"] = usual_for(entry, idx)
-        if str(idx) not in entry["today"]:
+        if str(idx) not in entry["today"] and day not in HOLIDAYS:
             entry["n"][idx] += 1
             entry["sum"][idx] += mid
             entry["today"][str(idx)] = mid
