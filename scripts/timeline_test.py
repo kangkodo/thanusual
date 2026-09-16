@@ -35,7 +35,9 @@ def check():
     frames = [{"at": stamp(now - datetime.timedelta(minutes=i * 10)), "places": [place]}
               for i in range(310)]
     result = update({"frames": frames}, current, now)
-    assert len(result["frames"]) == 288
+    assert len(result["frames"]) == 96          # 48 hours at one frame per half hour
+    times = [parse_time(f["at"]) for f in result["frames"]]
+    assert all((b - a).total_seconds() >= 1800 for a, b in zip(times, times[1:]))
     assert all(parse_time(f["at"]) >= now.replace(tzinfo=None) - datetime.timedelta(hours=48)
                for f in result["frames"])
     assert [parse_time(f["at"]) for f in result["frames"]] == sorted(parse_time(f["at"]) for f in result["frames"])

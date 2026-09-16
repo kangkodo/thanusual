@@ -5,6 +5,7 @@ import { mapSnapshot, timeOptions, distanceKm, hasCoords } from "./shared.js";
 
 const STALE_MIN = 60;
 const REFRESH_MS = 5 * 60 * 1000;
+const SNAPSHOT_FRESH_MIN = 20;  // the collector publishes every 10 minutes
 const PHONE = "(max-width: 47.99rem)";
 
 function renderTabs() {
@@ -361,6 +362,17 @@ async function loadJson(url) {
   return res.json();
 }
 
+// current.json is fetched every few minutes, so one host is enough while it is current.
+// A stale or failed first answer is the only case worth spending the other two requests on,
+// and pickSnapshot still keeps a slower host from rolling the board back.
+async function loadSnapshot() {
+  const first = await loadJson(DATA_URLS[0]).catch(() => null);
+  const age = first ? ageMinutes(first.source_at || first.generated_at) : null;
+  if (first && first.ok > 0 && age != null && age <= SNAPSHOT_FRESH_MIN) return first;
+  const rest = await Promise.all(DATA_URLS.slice(1).map((url) => loadJson(url).catch(() => null)));
+  return pickSnapshot([first, ...rest]);
+}
+
 // Layer files are big (street.json ~300KB) and the first host is the freshest, so stop at the first success.
 async function loadFirst(urls) {
   for (const url of urls) {
@@ -379,18 +391,16 @@ async function load() {
   if (loading) return;
   loading = true;
   try {
-    const hits = await Promise.all(DATA_URLS.map((url) => loadJson(url).catch(() => null)));
     const first = !state.data;
     // Never let a slower or cached host roll the board back to an older snapshot.
-    const best = newer(state.data, pickSnapshot(hits));
+    const best = newer(state.data, await loadSnapshot());
     const changed = Boolean(best) && best !== state.data;
     if (changed) state.data = best;
-    if (state.timeMode === "history") state.timeline = await loadFirst(layerUrls("timeline.json"));
     if (first) {
       readHash();
       render();
       selectedRow()?.scrollIntoView({ block: "nearest" });
-    } else if (changed || state.timeMode === "history") {
+    } else if (changed) {
       render();
     }
   } finally {
@@ -408,7 +418,10 @@ window.addEventListener("hashchange", () => {
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible") load();
 });
-setInterval(load, REFRESH_MS);
+// A hidden tab has nothing to show; visibilitychange above catches it up when it returns.
+setInterval(() => {
+  if (document.visibilityState === "visible") load();
+}, REFRESH_MS);
 setInterval(() => {
   if (state.data) renderStamp();
 }, 60 * 1000);

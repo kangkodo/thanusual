@@ -17,7 +17,7 @@ First screen is a ranked list in a side panel (phone: bottom sheet). The map is 
 
 ## Map
 
-Time exploration: `timeline.json` persists the last 48 hours independently of git history. `current.json` includes all available `forecasts` plus legacy `forecast_2h`. UI separates recent/history/forecast/usual and 250m modes; no interpolation of missing observations. Comparison is selected time minus latest, divided by latest (usual uses same-weekday baseline).
+Time exploration: `timeline.json` persists the last 48 hours independently of git history, one frame per half hour (96 frames, about 1.2MB): the source's own ~30-minute lag makes finer frames unreadable, and 10-minute frames tripled the file. The page loads it when the mode is selected, not on every refresh. `current.json` includes all available `forecasts` plus legacy `forecast_2h`. UI separates recent/history/forecast/usual and 250m modes; no interpolation of missing observations. Comparison is selected time minus latest, divided by latest (usual uses same-weekday baseline).
 
 250m detail: official `Se250MSpopLocalResd` (OA-22784, 공공누리 1유형), daily `grid.json` with source date and 3-hour slices. Domestic living-population estimates, typically D-4, never live crowds. `vendor/seoul-grid.geojson` contains official viewer CELL_ID center points, not boundaries. Null suppression is not zero. Daily fixed quantile scale keeps time changes comparable. National SGIS boundaries and telecom-derived official Seoul feeds are reused; do not add unrelated national statistics just to increase source count.
 
