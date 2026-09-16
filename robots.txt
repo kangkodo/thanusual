@@ -1,0 +1,10 @@
+# 평소보다 / thanusual
+# 지도 타일은 요청 하나하나가 무료 함수 한도를 쓴다. 저장소 파일은 사이트 내용이 아니다.
+User-agent: *
+Disallow: /tiles/
+Disallow: /scripts/
+Disallow: /vendor/
+Disallow: /docs/
+Disallow: /.github/
+Disallow: /CLAUDE.md
+Disallow: /AGENTS.md
