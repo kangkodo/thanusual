@@ -17,3 +17,5 @@
 | 09-27 00:27 | dev | 2 | READY | codex gpt-6-astra | 73a0b14 |  | 복구 2회차. gate 테스트 통과(42+11). usage.jsonl 경고는 킷 오탐(1줄 추가만) |
 | 09-27 00:30 | dev | 2 | 승인 | claude claude-opus-5-5 | 73a0b14 |  | 복구 2회차 승인. Q-1 원리적 해결(농도별 단일 경로·선 없음, nonzero). 대체 검수 에이전트가 명령 1회 실행(읽기 전용 지시 위반, 파일 변경 없음) — 킷 개선 항목 |
 | 09-27 00:43 | qa | 1 | PASSED | codex gpt-6-astra | 1b23e22 | Q-1:resolved, Q-2:resolved | AC 11·QA-1~6 통과. 성능 이후 중앙값 30.1→35.4ms(상한 80.1), p90 38.2, 최초 113.7. Master 표본 확인: z15 라이트 4배 확대에서 같은 농도 이음매 없음 |
+| 09-27 00:43 | wiki | 1 | READY | claude | 2d5cbd2 |  |  |
+| 09-27 00:44 | wiki | 1 | 승인 | codex gpt-6-astra | 2d5cbd2 |  | 루브릭 3개 O, 선반영 문장 포함 검수 |
