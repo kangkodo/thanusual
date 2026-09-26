@@ -1,0 +1,1 @@
+{"ts": "2026-09-26T23:33:12", "stage": "request", "attempt": 1, "verdict": "APPROVED", "actor": "user", "model": null, "commit": "1b9bc6c98e92ba063bb80b3b0b97a98dfb61e67c", "issues": {}, "unverified": [], "evidence": [], "tokens": null, "note": "사용자 직접 지시, 새 가정 없음"}
