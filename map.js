@@ -223,6 +223,7 @@ function drawGrid(g) {
     [bounds.getNorth() + latMargin, bounds.getEast() + lngMargin],
   );
   const date = String(data.ymd || "").replace(/^(\d{4})(\d{2})(\d{2})$/, "$1-$2-$3");
+  const bands = new Map();
   for (const feature of state.gridGeo.features || []) {
     if (feature.geometry?.type !== "Point") continue;
     const [lng, lat] = feature.geometry.coordinates;
@@ -233,16 +234,20 @@ function drawGrid(g) {
     const population = slice[cell];
     const available = Number.isFinite(population) && population >= 0;
     const opacity = available ? 0.2 + bandIndex(population, gridBreaks) * 0.16 : 0.12;
-    const layer = window.L.polygon(corners, {
-      color: available ? theme.ink : theme.neutral,
-      fillColor: available ? theme.ink : theme.neutral,
-      weight: 0.5,
-      opacity: opacity / 4,
-      fillOpacity: opacity,
-    });
+    if (!bands.has(opacity)) bands.set(opacity, { color: available ? theme.ink : theme.neutral, rings: [] });
+    bands.get(opacity).rings.push(corners);
+    // Keep Leaflet's per-cell hit testing, but never paint these paths.
+    const layer = window.L.polygon(corners, { stroke: false, fill: false });
     hoverTip(layer, `${date} ${state.timeAt}:00 KST · 격자 ${cell} · ${available ? `생활인구 ${fmt(population)}명` : "비식별/자료 없음"} · 250m 격자`);
     layer.on("click", () => layer.openTooltip());
     g.addLayer(layer);
+  }
+  // One nonzero fill per band cancels shared edges instead of alpha-compositing them twice.
+  for (const [opacity, { color, rings }] of bands) {
+    g.addLayer(window.L.polygon(rings, {
+      stroke: false, fillColor: color, fillOpacity: opacity, fillRule: "nonzero", interactive: false,
+      smoothFactor: 0,
+    }));
   }
 }
 
