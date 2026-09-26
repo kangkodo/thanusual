@@ -351,7 +351,7 @@ function renderTime() {
   slider.setAttribute("aria-valuetext", state.timeAt);
   $("compare-label").hidden = !["history", "forecast"].includes(state.timeMode);
   const kind = { now: "최근 집계 · 서울시 집계 약 30분 지연", history: options.length ? `${state.timeAt} 집계` : "과거 자료 수집 전입니다. 배포 후 최대 48시간 보관합니다.", forecast: options.length ? `${state.timeAt} 예측 · 관측값 아님` : "제공된 예측 자료가 없습니다.", usual: "같은 요일·30분대의 과거 평균 대비 · 표본 부족은 회색" };
-  kind.grid = options.length && state.gridGeo ? `${state.layerData.grid.ymd} · ${state.timeAt}시 · 내국인 생활인구 추정(실시간 아님). 확대 후 점을 누르면 인원이 나옵니다. 진할수록 많음 · 회색 비식별/누락 · 좌표 없는 격자 제외. 목록은 최근 장소 집계.` : "250m 자료를 불러오지 못했습니다. 수집 완료 후 사용할 수 있습니다.";
+  kind.grid = options.length && state.gridGeo ? `${state.layerData.grid.ymd} · ${state.timeAt}시 · 내국인 생활인구 추정(실시간 아님). 확대 후 칸을 누르면 인원이 나옵니다. 진할수록 많음 · 회색 비식별/누락 · 좌표 없는 격자 제외. 목록은 최근 장소 집계.` : "250m 자료를 불러오지 못했습니다. 수집 완료 후 사용할 수 있습니다.";
   $("time-note").textContent = kind[state.timeMode] + (state.timeMode === "grid" ? "" : state.timeMode === "usual" || (state.compare && options.length) ? " · 주황 증가 / 파랑 감소 / 회색 비교 불가·비슷" : " · 점은 구역 대표 위치");
 }
 

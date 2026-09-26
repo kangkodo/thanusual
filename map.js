@@ -1,6 +1,7 @@
 import { $, BOUNDS, RANK, el, fmt, hasCoords, mapSnapshot, state } from "./shared.js";
 import { radiusPx, STYLE } from "./map-radius.js";
 import { bandIndex, dongCode, kstHour, livingSlice, metroFlow, quantileBreaks } from "./lib/layers.js";
+import { cellCorners } from "./lib/grid-cells.js";
 
 const SEOUL = [37.55, 126.98];
 // Must match TILE_BBOX in lib/tiles.js so Leaflet never asks for a tile the proxy rejects.
@@ -214,25 +215,39 @@ function drawGrid(g) {
     gridScaleData = data;
   }
   const bounds = map.getBounds();
+  // Conservatively include centers one 250m cell beyond each viewport edge.
+  const latMargin = 250 / 110000;
+  const lngMargin = latMargin / Math.cos(bounds.getNorth() * Math.PI / 180);
+  const paddedBounds = window.L.latLngBounds(
+    [bounds.getSouth() - latMargin, bounds.getWest() - lngMargin],
+    [bounds.getNorth() + latMargin, bounds.getEast() + lngMargin],
+  );
   const date = String(data.ymd || "").replace(/^(\d{4})(\d{2})(\d{2})$/, "$1-$2-$3");
+  const bands = new Map();
   for (const feature of state.gridGeo.features || []) {
     if (feature.geometry?.type !== "Point") continue;
     const [lng, lat] = feature.geometry.coordinates;
-    if (!Number.isFinite(lat) || !Number.isFinite(lng) || !bounds.contains([lat, lng])) continue;
+    if (!Number.isFinite(lat) || !Number.isFinite(lng) || !paddedBounds.contains([lat, lng])) continue;
     const cell = feature.properties?.CELL_ID;
-    if (cell == null) continue;
+    const corners = cellCorners(cell);
+    if (!corners) continue;
     const population = slice[cell];
     const available = Number.isFinite(population) && population >= 0;
-    const layer = window.L.circleMarker([lat, lng], {
-      radius: 4,
-      color: available ? theme.ink : theme.neutral,
-      fillColor: available ? theme.ink : theme.neutral,
-      weight: 0.5,
-      fillOpacity: available ? 0.2 + bandIndex(population, gridBreaks) * 0.16 : 0.12,
-    });
-    hoverTip(layer, `${date} ${state.timeAt}:00 KST · 격자 ${cell} · ${available ? `생활인구 ${fmt(population)}명` : "비식별/자료 없음"} · 250m 격자 중심점이며 원은 실제 격자 경계가 아닙니다.`);
+    const opacity = available ? 0.2 + bandIndex(population, gridBreaks) * 0.16 : 0.12;
+    if (!bands.has(opacity)) bands.set(opacity, { color: available ? theme.ink : theme.neutral, rings: [] });
+    bands.get(opacity).rings.push(corners);
+    // Keep Leaflet's per-cell hit testing, but never paint these paths.
+    const layer = window.L.polygon(corners, { stroke: false, fill: false });
+    hoverTip(layer, `${date} ${state.timeAt}:00 KST · 격자 ${cell} · ${available ? `생활인구 ${fmt(population)}명` : "비식별/자료 없음"} · 250m 격자`);
     layer.on("click", () => layer.openTooltip());
     g.addLayer(layer);
+  }
+  // One nonzero fill per band cancels shared edges instead of alpha-compositing them twice.
+  for (const [opacity, { color, rings }] of bands) {
+    g.addLayer(window.L.polygon(rings, {
+      stroke: false, fillColor: color, fillOpacity: opacity, fillRule: "nonzero", interactive: false,
+      smoothFactor: 0,
+    }));
   }
 }
 
