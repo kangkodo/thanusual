@@ -4,6 +4,8 @@ Live ranking of 121 Seoul citydata hotspots: how crowded now vs usual. Productio
 
 First screen is a ranked list in a side panel (phone: bottom sheet). The map is the canvas behind it. Copy in each row: name, congestion grade, people midpoint, forecast % labeled by its clock hour (「01시 예측」, never 「2시간 뒤」: the API forecasts a fixed hour), and 「평소보다 +N%」 once the baseline is ready. Baseline (scripts/baseline.py): same weekday, same 30-minute bin, one sample per slot per day, past weeks only, shown at n≥6 (two weeks), 「평소와 비슷」 within ±5%; once half the places are ready `warming` flips and stays flipped, the board sorts by 평소보다 and rows without a value keep the grade order below. Stamp shows source age; past 60 minutes it says 「자료가 오래됐습니다」, or 「서울시 집계가 멈춰 있습니다」 when generated_at is still fresh. Source data lags ~30 minutes (PPLTN_TIME), so copy says 「집계 약 30분 전」, never 「실시간」.
 
+Pinned places (`lib/pins.js`): ☆ beside each row and in the place detail pins a place. Pins live only in this browser (`localStorage` key `thanusual.pins.v1`); when storage is blocked they last for the tab. The 「고정한 장소」 section sits above the board and ignores the category tab and search. Membership comes from the latest `state.data`; values and order come from the same time-mode snapshot as the board, and pinned places without a value there show as 「이 시각 자료 없음」 rows after the rest, in name order. The ranked board below is unchanged: pinned places keep their rank there. Pins are never dropped automatically, only by the user.
+
 ## Product locks
 
 - 121 places, not 140, for the **지금** layer. Official `citydata_ppltn` only. Do not use unofficial `/SeoulRtd/api/ppltn`.
