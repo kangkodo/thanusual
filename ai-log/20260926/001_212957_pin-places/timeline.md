@@ -14,3 +14,5 @@
 | 09-26 22:02 | qa | 1 | PASSED | codex gpt-6-astra | c91cb1f |  | AC-1~7·QA-1~10 통과. Master 표본 확인: QA-2 검색 0개, QA-8 375 dark, QA-10 과거 모드. 한계: 타일 제외, 5분 자동 갱신은 수동 render로 대체, 로컬 구 데이터(09-03) |
 | 09-26 22:02 | wiki | 1 | READY | claude | dec205c |  |  |
 | 09-26 22:03 | wiki | 1 | 반려 | codex gpt-6-astra | dec205c | W-1:open | 저장소 차단 시 '탭 동안 유지'는 부정확: 새로고침하면 사라짐 |
+| 09-26 22:03 | wiki | 2 | READY | claude | cc5193c |  | W-1 반영 |
+| 09-26 22:04 | wiki | 2 | 승인 | codex gpt-6-astra | cc5193c | W-1:resolved | 루브릭 3개 O |
