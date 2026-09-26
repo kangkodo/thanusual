@@ -2,6 +2,11 @@ import { $, CATS, DATA_URLS, ageMinutes, ageText, el, fmt, later, newer, pickSna
 import { setMapPickHandler, syncMap } from "./map.js";
 import { DONG_GEO_URL, LAYERS, daysAgo, kstDate, kstHour, layerUrls, livingSlice, metroFlow } from "./lib/layers.js";
 import { mapSnapshot, timeOptions, distanceKm, hasCoords } from "./shared.js";
+import { pinnedRows, readPins, togglePin, writePins } from "./lib/pins.js";
+
+let pinStorage;
+try { pinStorage = window.localStorage; } catch { /* Pins still work in this tab. */ }
+state.pins = readPins(pinStorage);
 
 const STALE_MIN = 60;
 const REFRESH_MS = 5 * 60 * 1000;
@@ -175,10 +180,28 @@ function readHash() {
   }
 }
 
-function bindBoard() {
-  const board = $("board");
+function changePin(name) {
+  state.pins = togglePin(state.pins, name);
+  writePins(pinStorage, state.pins);
+  render();
+}
+
+function pinButton(name, region) {
+  const pinned = state.pins.has(name);
+  const btn = el("button", "pin-btn", pinned ? "★" : "☆");
+  btn.type = "button";
+  Object.assign(btn.dataset, { region, name, kind: "pin" });
+  btn.setAttribute("aria-pressed", String(pinned));
+  btn.setAttribute("aria-label", `${name} ${pinned ? "고정 해제" : "고정"}`);
+  return btn;
+}
+
+function bindBoard(id) {
+  const board = $(id);
   if (board.dataset.ready) return;
   board.addEventListener("click", (e) => {
+    const pin = e.target.closest(".pin-btn");
+    if (pin) { changePin(pin.dataset.name); return; }
     const li = e.target.closest(".row");
     if (!li || !li.dataset.name) return;
     select(li.dataset.name, true);
@@ -222,11 +245,65 @@ function renderStamp() {
   if (summary) summary.textContent = state.timeMode === "now" ? summaryLine || "지금 붐비는 곳부터" : state.timeMode === "grid" ? "250m 상세 분포 · 목록은 최근 장소 집계" : `${{history:"과거 집계",forecast:"예측",usual:"평소 대비"}[state.timeMode]} · ${state.timeAt || "같은 요일·시간대"}`;
 }
 
+function renderRow(place, index, region, showCat) {
+  const selected = place.name === state.selected;
+  const li = el("li", selected ? "row is-selected" : "row");
+  li.dataset.name = place.name;
+  const btn = el("button", "row-btn");
+  btn.type = "button";
+  Object.assign(btn.dataset, { region, name: place.name, kind: "row" });
+  if (selected) btn.setAttribute("aria-current", "true");
+  const name = el("span", "name");
+  name.append(el("span", "", place.name));
+  if (showCat) name.append(el("span", "cat", place.category));
+  if (place.missing) {
+    btn.append(el("span", "rank", "★"), name, el("span", "meta", "이 시각 자료 없음"));
+    li.append(btn, pinButton(place.name, region));
+    return li;
+  }
+  const value = el("span", "value");
+  const usual = usualText(usualPct(place));
+  if (usual) value.append(el("span", "usual", usual));
+  value.append(el("span", "count", fmt(place.mid)));
+  const meta = el("div", "meta");
+  const lvl = el("span", place.level ? `level lvl-${place.level.replace(/\s+/g, "-")}` : "level", place.level || "등급 없음");
+  const fc = ["now", "grid"].includes(state.timeMode) ? later(place) : { label: state.timeMode === "usual" ? "평소 대비" : "최근 대비", value: place.delta == null ? "자료 없음" : `${place.delta > 0 ? "+" : ""}${place.delta}%` };
+  const lat = el("span", "later");
+  lat.append(el("span", "later-label", fc.label), " ", el("span", "later-value", fc.value));
+  meta.append(lvl, lat);
+  btn.append(el("span", "rank", region === "pinned" ? "★" : String(index + 1)), name, value, meta);
+  li.append(btn, pinButton(place.name, region));
+  return li;
+}
+
+function keepFocus() {
+  const active = document.activeElement;
+  if (!active?.dataset.kind) return null;
+  const { region, name, kind } = active.dataset;
+  const buttons = [...document.querySelectorAll(`[data-region="${region}"][data-kind="${kind}"]`)];
+  return { region, name, kind, index: buttons.indexOf(active) };
+}
+
+function restoreFocus(keep) {
+  if (!keep) return;
+  const buttons = [...document.querySelectorAll(`[data-kind="${keep.kind}"]`)]
+    .filter((btn) => !btn.closest("[hidden]"));
+  const sameRegion = buttons.filter((btn) => btn.dataset.region === keep.region);
+  const otherRegions = keep.region === "pinned" ? ["board"] : keep.region === "board" ? ["pinned"] : ["pinned", "board"];
+  const target = sameRegion.find((btn) => btn.dataset.name === keep.name)
+    || buttons.find((btn) => otherRegions.includes(btn.dataset.region) && btn.dataset.name === keep.name)
+    || sameRegion[Math.min(keep.index, sameRegion.length - 1)]
+    || $("q");
+  target.focus({ preventScroll: true });
+}
+
 function render() {
+  const keep = keepFocus();
   renderTabs();
   bindSearch();
   bindSheet();
-  bindBoard();
+  bindBoard("board");
+  bindBoard("pinned-list");
   bindLayers();
   updateLayerNote(); // the note names the hour the map is drawing; keep them in step as time passes
   renderTime();
@@ -235,9 +312,13 @@ function render() {
   const banner = $("banner");
   const board = $("board");
   renderStamp();
+  const pinned = pinnedRows(state.data, data, state.pins);
+  $("pinned").hidden = !state.data || !pinned.length;
+  $("pinned-list").replaceChildren(...pinned.map((place, i) => renderRow(place, i, "pinned", true)));
   if (!data) {
     board.replaceChildren(el("li", "empty", "목록을 읽지 못했습니다."));
     syncMap();
+    restoreFocus(keep);
     return;
   }
   const warming = data.warming !== false;
@@ -251,39 +332,12 @@ function render() {
     const empty = state.timeMode !== "now" ? "선택한 시각의 자료가 없습니다. 다른 시각이나 최근 집계를 선택하세요." : state.q.trim() ? "이 이름에 맞는 장소가 없습니다. 지도에는 주변 장소가 유지됩니다." : "이 분류에 장소가 없습니다.";
     board.replaceChildren(el("li", "empty", empty));
     syncMap();
+    restoreFocus(keep);
     return;
   }
-  const frag = document.createDocumentFragment();
-  const showCat = state.cat === "전체";
-  rows.forEach((place, i) => {
-    const selected = place.name === state.selected;
-    const li = el("li", selected ? "row is-selected" : "row");
-    li.dataset.name = place.name;
-    const btn = el("button", "row-btn");
-    btn.type = "button";
-    if (selected) btn.setAttribute("aria-current", "true");
-    const name = el("span", "name");
-    name.append(el("span", "", place.name));
-    if (showCat) name.append(el("span", "cat", place.category));
-    const value = el("span", "value");
-    const usual = usualText(usualPct(place));
-    if (usual) value.append(el("span", "usual", usual));
-    value.append(el("span", "count", fmt(place.mid)));
-    const meta = el("div", "meta");
-    const lvl = el("span", place.level ? `level lvl-${place.level.replace(/\s+/g, "-")}` : "level", place.level || "등급 없음");
-    const fc = ["now", "grid"].includes(state.timeMode) ? later(place) : { label: state.timeMode === "usual" ? "평소 대비" : "최근 대비", value: place.delta == null ? "자료 없음" : `${place.delta > 0 ? "+" : ""}${place.delta}%` };
-    const lat = el("span", "later");
-    lat.append(el("span", "later-label", fc.label), " ", el("span", "later-value", fc.value));
-    meta.append(lvl, lat);
-    btn.append(el("span", "rank", String(i + 1)), name, value, meta);
-    li.append(btn);
-    frag.append(li);
-  });
-  // A background refresh must not throw a keyboard user out of the list.
-  const keep = document.activeElement?.closest?.(".row")?.dataset.name;
-  board.replaceChildren(frag);
-  if (keep) board.querySelector(`[data-name="${CSS.escape(keep)}"] .row-btn`)?.focus({ preventScroll: true });
+  board.replaceChildren(...rows.map((place, i) => renderRow(place, i, "board", state.cat === "전체")));
   syncMap();
+  restoreFocus(keep);
 }
 
 function renderTime() {
@@ -311,6 +365,10 @@ function renderDetail() {
   close.type = "button";
   close.onclick = () => { select(null, false); render(); };
   const title = el("h2", "detail-title", original.name);
+  const heading = el("div", "detail-heading");
+  const pin = pinButton(original.name, "detail");
+  pin.onclick = () => changePin(original.name);
+  heading.append(title, pin);
   const count = p ? `${p.level || "등급 없음"} · ${fmt(p.min ?? p.mid)}~${fmt(p.max ?? p.mid)}명` : "이 시각 자료 없음";
   const when = state.timeMode === "forecast" ? `${state.timeAt} 예측` : p?.source_at || state.data.source_at;
   const nearby = (state.data.places || []).filter((x) => x.name !== original.name && hasCoords(x) && x.state === "fresh")
@@ -323,7 +381,7 @@ function renderDetail() {
     btn.onclick = () => { select(x.name, true); state.cat = "전체"; state.q = ""; $("q").value = ""; render(); };
     links.append(btn);
   }
-  box.replaceChildren(close, title, el("p", "", count), el("p", "detail-note", when || "시각 없음"), el("p", "detail-note", "구역 전체 추정 인구입니다. 골목·건물별 인원은 알 수 없습니다."), el("p", "", "가까운 다른 장소"), links);
+  box.replaceChildren(close, heading, el("p", "", count), el("p", "detail-note", when || "시각 없음"), el("p", "detail-note", "구역 전체 추정 인구입니다. 골목·건물별 인원은 알 수 없습니다."), el("p", "", "가까운 다른 장소"), links);
 }
 
 $("time-mode").addEventListener("change", async (e) => {
