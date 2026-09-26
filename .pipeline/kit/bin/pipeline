@@ -151,8 +151,9 @@ def cmd_codex(a):
         f"# 이번 작업\n\n실행 기록 폴더: `{run.relative_to(r)}`\n\n{task}"])
     stamp = dt.datetime.now().strftime("%H%M%S")
     out = run / "raw" / f"{stamp}_{a.role}_reply.md"
-    cmd = ["codex", "exec", "-m", c.get("model", "gpt-6-astra"), "-c", f"model_reasoning_effort={effort}",
-           "-s", sandbox, "--skip-git-repo-check", "--ephemeral", "-o", str(out), "-"]
+    model = c.get("model", "gpt-6-astra")
+    cmd = ["codex", "exec", "-m", model, "-c", f"model_reasoning_effort={effort}",
+           "-s", sandbox, "--skip-git-repo-check", "--ephemeral", "--json", "-o", str(out), "-"]
     if sandbox == "workspace-write" and c.get("network"):
         cmd[1:1] = ["-c", "sandbox_workspace_write.network_access=true"]
     started = time.time()
@@ -161,11 +162,48 @@ def cmd_codex(a):
     reply = mask(out.read_text(encoding="utf-8")) if out.exists() else ""
     if out.exists():
         out.write_text(reply, encoding="utf-8")
+    usage = sum_usage(p.stdout)
+    rec = {"ts": dt.datetime.now().isoformat(timespec="seconds"), "role": a.role, "model": model, "effort": effort,
+           "seconds": round(time.time() - started), "exit": p.returncode, **usage}
+    with open(run / "usage.jsonl", "a", encoding="utf-8") as f:
+        f.write(json.dumps(rec, ensure_ascii=False) + "\n")
     print(reply)
-    print(f"\n[codex {a.role} · {sandbox} · {effort} · {time.time() - started:.0f}s · exit {p.returncode}]", file=sys.stderr)
+    print(f"\n[codex {a.role} · {sandbox} · {effort} · {rec['seconds']}s · "
+          f"in {usage['input_tokens']:,} / out {usage['output_tokens']:,} tok · exit {p.returncode}]", file=sys.stderr)
     if p.returncode:
         print(mask(p.stderr[-2000:]), file=sys.stderr)
         sys.exit(p.returncode)
+
+
+TODO_FILE = "ai-log/*/01-planning/todo.md"
+
+
+def todo_checks_only(ref, path):
+    """개발 역할이 todo.md에서 체크([ ]→[x])와 '완료 근거:' 줄만 바꿨는지."""
+    diff = git("diff", "-U0", ref, "--", path, strip=False).splitlines()
+    lines = [l for l in diff if l[:1] in "+-" and not l.startswith(("+++", "---"))]
+    minus = [l[1:] for l in lines if l.startswith("-")]
+    plus = [l[1:] for l in lines if l.startswith("+")]
+    if any(m.replace("- [ ]", "- [x]", 1) not in plus for m in minus):
+        return False
+    return all(p.replace("- [x]", "- [ ]", 1) in minus or p.strip().startswith("완료 근거:") for p in plus)
+
+
+USAGE_KEYS = ("input_tokens", "cached_input_tokens", "output_tokens", "reasoning_output_tokens")
+
+
+def sum_usage(jsonl):
+    """codex exec --json 출력에서 turn.completed 이벤트의 토큰을 합친다."""
+    total = dict.fromkeys(USAGE_KEYS, 0)
+    for line in jsonl.splitlines():
+        try:
+            e = json.loads(line)
+        except ValueError:
+            continue
+        if e.get("type") == "turn.completed":
+            for k in USAGE_KEYS:
+                total[k] += e.get("usage", {}).get(k) or 0
+    return total
 
 
 def cmd_gate(a):
@@ -174,7 +212,8 @@ def cmd_gate(a):
     if a.protect_since:
         changed = set(git("diff", "--name-only", a.protect_since).splitlines())
         changed |= set(git("ls-files", "--others", "--exclude-standard").splitlines())
-        hit = sorted(f for f in changed if match(f, cfg.get("protected", [])))
+        hit = sorted(f for f in changed if match(f, cfg.get("protected", []))
+                     and not (match(f, [TODO_FILE]) and todo_checks_only(a.protect_since, f)))
         if hit:
             failed.append("보호 경로 변경: " + ", ".join(hit))
     # 명령은 프로젝트의 config.json에서 온다(package.json 스크립트와 같은 신뢰 수준). config는 보호 경로다.
@@ -218,6 +257,11 @@ def cmd_status(a):
     recs = load(run)
     meta = json.loads((run / "meta.json").read_text(encoding="utf-8"))
     print(f"{run.relative_to(root())} · 경로 {meta['route']}")
+    uf = run / "usage.jsonl"
+    if uf.exists():
+        calls = [json.loads(line) for line in uf.read_text(encoding="utf-8").splitlines() if line.strip()]
+        tin, tout = sum(c["input_tokens"] for c in calls), sum(c["output_tokens"] for c in calls)
+        print(f"  Codex 호출 {len(calls)}회 · 입력 {tin:,} · 출력 {tout:,} 토큰 · {sum(c['seconds'] for c in calls)}초 (Claude 측 미수집)")
     for st in ["request", "plan", "dev", "qa", "wiki"]:
         rv = reviews(recs, st)
         last = rv[-1] if rv else None

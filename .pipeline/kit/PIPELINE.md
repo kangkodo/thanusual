@@ -66,6 +66,8 @@
 
 - 승인과 PASSED는 커밋된 상태에서만 기록한다(`ai-log/` 제외). 판정 레코드의 `commit`이 곧 검수한 버전이다.
 - `pipeline verdict`만 `verdicts.jsonl`에 쓰고, `timeline.md`는 자동 생성한다.
+- `pipeline codex`는 호출마다 토큰·시간을 `usage.jsonl`에 남긴다(커밋 대상). Claude 측 사용량은 아직 수집하지 않는다.
+- 개발 역할이 `todo.md`에서 체크와 "완료 근거" 줄만 바꾼 것은 보호 경로 위반이 아니다. `gate`가 자동 판별한다. 문구가 바뀌면 위반이다.
 - 개발 역할을 부르기 전에 Master가 먼저 커밋한다. 호출 뒤 `pipeline gate --protect-since <그 커밋>`으로 보호 경로 변경을 잡는다.
 - `raw/`와 `03-qa/captures/`는 git에서 제외하고, `pipeline clean-raw`로 기한(기본 30일)이 지나면 지운다. 저장 전 비밀값을 마스킹한다.
 

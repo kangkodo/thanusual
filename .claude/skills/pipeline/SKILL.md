@@ -35,7 +35,7 @@ description: AI 교차검수 개발 파이프라인의 Master 플레이북. 사�
 2. 작업 지시 파일(`02-development/task-N.md`)에 구현할 DEV 항목, 관련 파일, 이전 차단 지적을 적고: `$P codex developer --prompt-file <그 파일>`.
 3. `$P gate --protect-since BASE`. 보호 경로 변경이 나오면 그 변경을 되돌리고(`git checkout BASE -- <경로>`) 반려로 처리한다. 검사 실패도 LLM 검수 없이 바로 2로 돌아간다.
 4. 통과하면 커밋하고 `$P verdict --stage dev --verdict READY --actor codex`.
-5. `git diff BASE..HEAD > <run>/raw/dev-diff-N.patch` 를 만든 뒤, Agent 도구로 `pipeline-reviewer` 서브에이전트에게 검수를 맡긴다. diff 경로, `todo.md`, 개발 루브릭, 이전 지적 ID를 넘긴다.
+5. `git diff BASE..HEAD > <run>/raw/dev-diff-N.patch` 를 만든 뒤, Agent 도구로 `pipeline-reviewer` 서브에이전트에게 검수를 맡긴다. diff 경로, `todo.md`, 개발 루브릭, 이전 지적 ID를 넘긴다. 세션을 다른 폴더에서 시작해 `pipeline-reviewer`가 등록돼 있지 않으면, 읽기 전용 도구만 가진 에이전트(예: Explore)에 `.claude/agents/pipeline-reviewer.md` 본문을 그대로 지시로 넘기고, 판정 기록 비고에 대체 사실을 적는다.
 6. 판정을 `$P verdict --stage dev ... --actor claude`로 기록한다. 반려면 2로 돌아간다.
 
 ## 4. 독립 QA (`qa`) — Codex
