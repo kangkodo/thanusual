@@ -235,19 +235,26 @@ p, h1, ol { margin: 0; }
   column-gap: var(--space-3);
   align-items: baseline;
 }
-.board {
-  list-style: none;
+.board-scroll {
   flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
+}
+.board {
+  list-style: none;
+  margin: 0;
   padding-bottom: var(--space-4);
 }
 .row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 44px;
+  align-items: center;
   border-bottom: 1px solid var(--border-subtle);
   scroll-margin-top: var(--tab);
 }
 .row-btn {
   appearance: none;
+  min-width: 0;
   width: 100%;
   margin: 0;
   padding: var(--space-3) 0;
@@ -263,6 +270,22 @@ p, h1, ol { margin: 0; }
 }
 .row-btn:hover { background: var(--surface-secondary); }
 .row-btn:focus-visible { outline-offset: 2px; }
+.pin-btn {
+  appearance: none;
+  flex-shrink: 0;
+  min-width: 44px;
+  min-height: 44px;
+  padding: var(--space-2);
+  border: 0;
+  border-radius: var(--radius-small);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.pin-btn:hover { background: var(--surface-secondary); }
+#pinned-title { padding: var(--space-3) var(--space-4) 0; }
 .rank, .value, .later, .usual { font-variant-numeric: tabular-nums; }
 .rank { color: var(--text-secondary); font-size: var(--type-compact); }
 .name {
@@ -558,7 +581,9 @@ main {
 .leaflet-tooltip.detail-tooltip { white-space: normal; width: max-content; max-width: min(20rem, 70vw); padding: var(--space-2); background: var(--surface); border: 1px solid var(--border); }
 .place-detail { padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--border); overflow-y: auto; flex-shrink: 0; max-height: 40%; font-size: var(--type-compact); }
 .place-detail[hidden] { display: none; }
-.detail-title { font-size: var(--type-body); margin: 0; }
+.detail-title, #pinned-title { font-size: var(--type-body); margin: 0; }
+.detail-heading { display: flex; align-items: center; gap: var(--space-2); }
+.detail-title { min-width: 0; overflow-wrap: anywhere; }
 .detail-close { float: right; }
 .detail-close, .nearby-place { color: var(--text); background: var(--surface); font: inherit; border: 1px solid var(--border); padding: var(--space-2); cursor: pointer; min-height: 36px; }
 .detail-note { color: var(--text-secondary); font-size: var(--type-metadata); }

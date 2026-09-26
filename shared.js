@@ -20,6 +20,7 @@ export const state = {
   cat: "전체",
   q: "",
   data: null,
+  pins: new Set(),
   selected: null,
   focus: false,
   layers: defaultLayerState(),

@@ -26,31 +26,39 @@
 
 ## TODO
 
-- [ ] DEV-001 `lib/pins.js`를 만든다. 브라우저 API에 직접 기대지 않는 순수 함수만 둔다.
+- [x] DEV-001 `lib/pins.js`를 만든다. 브라우저 API에 직접 기대지 않는 순수 함수만 둔다.
+  완료 근거: lib/pins.js · 저장소 안전 읽기·쓰기, 불변 토글, 원본 소속·스냅숏 정렬·자료 없음 행 함수; AC-1~7 통과
   - `PIN_KEY = "thanusual.pins.v1"`
   - `readPins(storage)` → `Set<string>`. `storage`가 없거나, `getItem`이 예외를 던지거나, 값이 JSON이 아니거나 배열이 아니면 빈 Set. 배열 안의 문자열이 아닌 값은 버린다.
   - `writePins(storage, pins)` → 성공하면 `true`, 실패(저장소 없음·예외)하면 `false`. 절대 예외를 던지지 않는다. 저장 형식은 이름 문자열의 JSON 배열.
   - `togglePin(pins, name)` → 새 Set을 돌려준다. 입력 Set은 바꾸지 않는다.
   - `pinnedRows(original, snapshot, pins)` → 상태 계약대로 행 배열. 값이 있는 행은 스냅숏의 장소 객체이고, 자료 없음 행은 `{ name, category, missing: true }`다. `original`이나 `snapshot`이 비어 있어도 예외 없이 동작한다.
   확인 방법: AC-1~AC-7
-- [ ] DEV-002 `shared.js`의 `state`에 `pins: new Set()`을 추가하고, `app.js` 시작 시 `readPins(localStorage 접근을 try로 감싼 값)`으로 채운다. `localStorage` 접근 자체가 예외를 던지는 환경에서도 시작이 실패하지 않는다(R-5).
+- [x] DEV-002 `shared.js`의 `state`에 `pins: new Set()`을 추가하고, `app.js` 시작 시 `readPins(localStorage 접근을 try로 감싼 값)`으로 채운다. `localStorage` 접근 자체가 예외를 던지는 환경에서도 시작이 실패하지 않는다(R-5).
+  완료 근거: shared.js, app.js · pins 상태와 try로 감싼 localStorage 초기화
   확인 방법: AC-3, QA-6
-- [ ] DEV-003 `index.html`의 `#board` 바로 위에 고정 구역을 둔다: `<section id="pinned" aria-labelledby="pinned-title" hidden>`, 제목 `<h2 id="pinned-title">고정한 장소</h2>`, 목록 `<ul class="board pinned-list" id="pinned-list">`. `pinnedRows` 결과가 비었거나 `state.data`가 없으면 `hidden`.
+- [x] DEV-003 `index.html`의 `#board` 바로 위에 고정 구역을 둔다: `<section id="pinned" aria-labelledby="pinned-title" hidden>`, 제목 `<h2 id="pinned-title">고정한 장소</h2>`, 목록 `<ul class="board pinned-list" id="pinned-list">`. `pinnedRows` 결과가 비었거나 `state.data`가 없으면 `hidden`.
+  완료 근거: index.html, app.js · 고정 section·제목·목록 추가, 데이터와 고정 행 유무에 따른 hidden 처리
   확인 방법: QA-1, QA-2
-- [ ] DEV-004 `app.js`의 행 그리기를 함수로 빼서 두 목록이 같이 쓴다. 아래 순위 목록은 지금처럼 순위 번호를 보이고, 고정 구역 행은 순위 번호 자리에 `★`를 보인다(A-2). 자료 없음 행은 이름·분류와 "이 시각 자료 없음"만 보이고, 행을 누르면 기존처럼 선택된다. 순위 목록의 번호와 순서는 바뀌지 않는다. 고정 구역은 `render()`의 빈 목록 조기 반환보다 먼저 그린다.
+- [x] DEV-004 `app.js`의 행 그리기를 함수로 빼서 두 목록이 같이 쓴다. 아래 순위 목록은 지금처럼 순위 번호를 보이고, 고정 구역 행은 순위 번호 자리에 `★`를 보인다(A-2). 자료 없음 행은 이름·분류와 "이 시각 자료 없음"만 보이고, 행을 누르면 기존처럼 선택된다. 순위 목록의 번호와 순서는 바뀌지 않는다. 고정 구역은 `render()`의 빈 목록 조기 반환보다 먼저 그린다.
+  완료 근거: app.js · renderRow 공유, 순위·별·자료 없음 행, 빈 목록 조기 반환 전 고정 구역 렌더
   확인 방법: QA-2, QA-3, QA-10
-- [ ] DEV-005 각 행의 `<li>` 안, `.row-btn` **옆**(안이 아님)에 고정 버튼 `<button type="button" class="pin-btn">`를 둔다. `aria-pressed`로 고정 여부, `aria-label`은 고정 전 "`{장소} 고정`", 고정 후 "`{장소} 고정 해제`". 글자는 ☆/★. 누르면 `togglePin` → `writePins` → `render()`. 이 클릭은 행 선택·지도 이동·휴대폰 시트 닫기를 일으키지 않는다. 기존 `#board` 클릭 처리기와 새 `#pinned-list` 처리기 모두 `.pin-btn`을 먼저 걸러낸다.
+- [x] DEV-005 각 행의 `<li>` 안, `.row-btn` **옆**(안이 아님)에 고정 버튼 `<button type="button" class="pin-btn">`를 둔다. `aria-pressed`로 고정 여부, `aria-label`은 고정 전 "`{장소} 고정`", 고정 후 "`{장소} 고정 해제`". 글자는 ☆/★. 누르면 `togglePin` → `writePins` → `render()`. 이 클릭은 행 선택·지도 이동·휴대폰 시트 닫기를 일으키지 않는다. 기존 `#board` 클릭 처리기와 새 `#pinned-list` 처리기 모두 `.pin-btn`을 먼저 걸러낸다.
+  완료 근거: app.js · 행 버튼 옆 pinButton, aria 상태·이름, 두 목록에서 고정 클릭 우선 처리
   확인 방법: QA-4, QA-5
-- [ ] DEV-006 포커스 유지. `render()` **맨 앞**(상세를 다시 그리기 전)에서 포커스된 요소의 키 `{구역: "pinned"|"board"|"detail", 장소, 종류: "row"|"pin"}`를 `data-*` 속성으로 읽어 두고, 다시 그린 뒤 같은 키의 요소로 포커스를 돌려준다. 같은 키가 없으면 아래 순서로 대체한다.
+- [x] DEV-006 포커스 유지. `render()` **맨 앞**(상세를 다시 그리기 전)에서 포커스된 요소의 키 `{구역: "pinned"|"board"|"detail", 장소, 종류: "row"|"pin"}`를 `data-*` 속성으로 읽어 두고, 다시 그린 뒤 같은 키의 요소로 포커스를 돌려준다. 같은 키가 없으면 아래 순서로 대체한다.
+  완료 근거: app.js · render 첫 줄의 keepFocus, 구역·장소·종류와 인덱스 기반 restoreFocus 및 검색 대체
   1. 같은 장소, 같은 종류의 다른 구역 버튼(고정 구역 → 아래 목록, 아래 목록 → 고정 구역)
   2. 같은 구역의 같은 종류 버튼 중 원래 위치(인덱스)에 가장 가까운 것
   3. 검색 입력 `#q`
 
   기존 "새로고침 때 행 포커스 유지"는 이 규칙의 `row` 경우로 흡수한다. 상세 패널 버튼은 구역 `detail`이다.
   확인 방법: QA-5, QA-9
-- [ ] DEV-007 장소 상세(`#place-detail`)의 제목 옆에 같은 고정 버튼(같은 `aria-*` 규칙, 구역 `detail`)을 둔다. 누르면 목록과 상세가 함께 갱신된다.
+- [x] DEV-007 장소 상세(`#place-detail`)의 제목 옆에 같은 고정 버튼(같은 `aria-*` 규칙, 구역 `detail`)을 둔다. 누르면 목록과 상세가 함께 갱신된다.
+  완료 근거: app.js · 상세 제목 옆 detail 구역 pinButton과 목록·상세 동시 렌더
   확인 방법: QA-7
-- [ ] DEV-008 `styles.css`: 고정 버튼은 누를 수 있는 영역이 44×44px 이상, 기존 색 토큰만 사용(새 색 없음), 다크 모드에서도 대비 유지. 고정 구역 제목은 기존 섹션 제목 스타일을 따른다. 휴대폰 바텀시트와 데스크톱 모두에서 고정 구역과 아래 목록이 끝까지 스크롤로 닿는다.
+- [x] DEV-008 `styles.css`: 고정 버튼은 누를 수 있는 영역이 44×44px 이상, 기존 색 토큰만 사용(새 색 없음), 다크 모드에서도 대비 유지. 고정 구역 제목은 기존 섹션 제목 스타일을 따른다. 휴대폰 바텀시트와 데스크톱 모두에서 고정 구역과 아래 목록이 끝까지 스크롤로 닿는다.
+  완료 근거: styles.css, index.html · 44px 고정 버튼, 기존 색·제목 토큰, 두 목록을 포함하는 공통 스크롤 영역
   확인 방법: QA-8
 
 ## 수용 기준
