@@ -12,3 +12,5 @@
 | 09-26 21:48 | dev | 1 | READY | codex gpt-6-astra | cfa2d40 |  | gate: 테스트 통과, 보호 경로 경고는 todo.md 체크·근거만(킷 오탐, 수동 확인) |
 | 09-26 21:53 | dev | 1 | 승인 | claude claude-opus-5-5 | cfa2d40 |  | 루브릭 4개 O. 권고 4건(★ aria-hidden, aria-current 중복, 건너뛰기 링크 대상, aria-pressed+이름 이중 안내) — 후속 작업 후보 |
 | 09-26 22:02 | qa | 1 | PASSED | codex gpt-6-astra | c91cb1f |  | AC-1~7·QA-1~10 통과. Master 표본 확인: QA-2 검색 0개, QA-8 375 dark, QA-10 과거 모드. 한계: 타일 제외, 5분 자동 갱신은 수동 render로 대체, 로컬 구 데이터(09-03) |
+| 09-26 22:02 | wiki | 1 | READY | claude | dec205c |  |  |
+| 09-26 22:03 | wiki | 1 | 반려 | codex gpt-6-astra | dec205c | W-1:open | 저장소 차단 시 '탭 동안 유지'는 부정확: 새로고침하면 사라짐 |
