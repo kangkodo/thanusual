@@ -8,7 +8,7 @@ First screen is a ranked list in a side panel (phone: bottom sheet). The map is 
 
 - 121 places, not 140, for the **지금** layer. Official `citydata_ppltn` only. Do not use unofficial `/SeoulRtd/api/ppltn`.
 - Extra map layers are official Seoul Open Data Plaza feeds collected the same way (GitHub Actions, HTTP `:8088`). Workers `fetch()` ignores that port.
-- Snapshot lives on the `data` branch: `current.json` (지금), `living.json` (동네), `metro.json` (지하철), `street.json` (거리), `today.json` (오늘). Pages production branch is `main`. Do not build `data` as production.
+- Snapshot lives on the `data` branch: `current.json` (지금), `living.json` (동네), `metro.json` (지하철), `street.json` (거리), `today.json` (오늘). Pages production branch is `release` (since 2026-09-26). Merging to `main` does not deploy; deploy = fast-forward `main` to `release`, only when the user asks (`pipeline deploy`). Do not build `data` as production.
 - The `data` branch is squashed to one commit on the 1st of each month (`.github/workflows/squash-data.yml`). `baseline.json` holds the history, so nothing may depend on data-branch git history.
 - Sample Seoul key always returns 광화문·덕수궁 for citydata. Official key required for 121 and for the extra layers.
 - Secrets: never read, grep, or quote `secrets/`, `.env`, `*.key`. Load `../secrets/seoul.env` in code only.
@@ -97,3 +97,14 @@ When the user's request matches an available skill, invoke it. When in doubt, in
 - Save progress → /context-save
 - Resume context → /context-restore
 - Author a backlog-ready spec/issue → /spec
+
+<!-- ai-pipeline-kit:start -->
+## AI 교차검수 파이프라인
+
+이 저장소는 ai-pipeline-kit을 따른다(버전: `.pipeline/config.json`). 규칙은 `.pipeline/kit/PIPELINE.md`에 있다.
+
+- Claude: `/pipeline` 스킬로 Master 역할을 한다. 사용자와 대화하는 창구는 Master 하나다.
+- Codex: Master가 `pipeline codex <역할>`로 부를 때 해당 역할 카드(`.pipeline/kit/roles/`)만 따른다.
+- 개발 역할은 `.pipeline/`, `ai-log/`, 수용 테스트를 수정하지 않는다.
+- 이 저장소의 기존 작업 절차와 겹치면, `/pipeline`으로 시작한 작업만 이 파이프라인 절차를 따른다. 그 밖의 작업은 기존 절차를 그대로 따른다.
+<!-- ai-pipeline-kit:end -->

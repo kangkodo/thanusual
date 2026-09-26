@@ -1,0 +1,19 @@
+name: pipeline-check
+on:
+  pull_request:
+    branches: [main, next]
+jobs:
+  merge-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: 수용 테스트
+        run: sh -c 'set -- tests/acceptance/*.test.js; [ -e "$1" ] || exit 0; node --test "$@"'
+      - name: 병합 위임 조건
+        run: python3 .pipeline/kit/bin/pipeline merge-check --base origin/${{ github.base_ref }}

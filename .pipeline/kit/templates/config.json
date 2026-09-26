@@ -1,0 +1,25 @@
+{
+  "kit_version": "0.1.1",
+  "codex": {
+    "model": "gpt-6-astra",
+    "default_effort": "high",
+    "effort": { "plan-reviewer": "xhigh", "wiki-reviewer": "high", "developer": "high", "qa": "high" },
+    "network": false
+  },
+  "pairing": { "developer": "codex", "reviewer": "claude" },
+  "cap": 3,
+  "gate": [
+    { "name": "test", "run": "npm test" }
+  ],
+  "protected": [".pipeline/*", "ai-log/*", "tests/acceptance/*"],
+  "forbidden": [".github/workflows/*", "package.json", "package-lock.json", "*.env", "*secret*"],
+  "doc_paths": ["docs/*", "*.md"],
+  "required_stages": ["request", "plan", "dev", "qa", "wiki"],
+  "quick_stages": ["request", "dev", "qa"],
+  "qa": { "runner": "codex", "acceptance": "tests/acceptance" },
+  "deploy": {
+    "preview": "git fetch origin && git log --oneline origin/release..origin/main",
+    "command": "git push origin origin/main:refs/heads/release"
+  },
+  "raw_retention_days": 30
+}
