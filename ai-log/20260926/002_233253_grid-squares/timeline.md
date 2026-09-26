@@ -11,3 +11,5 @@
 | 09-26 23:45 | plan | 2 | 반려 | codex gpt-6-astra | 81b2538 | P-1:open | 칸 수 동일 조건이 가장자리 확장 요구와 모순(2,603 → 최소 2,727) |
 | 09-26 23:45 | plan | 3 | READY | claude | b7700b2 |  | P-1 잔여 반영: 칸 수 동일 조건 삭제 |
 | 09-26 23:50 | plan | 3 | 승인 | codex gpt-6-astra | b7700b2 | P-1:resolved | 루브릭 5개 O. 권고: QA에 기준 SHA·Chromium 버전·기기 기록 |
+| 09-27 00:01 | dev | 1 | READY | codex gpt-6-astra | 7842888 |  | gate: 테스트 통과(41+11). 보호 경로 경고는 usage.jsonl(CLI 기록, 킷 오탐). CLAUDE.md를 개발이 수정함 → 검수 확인 요청 |
+| 09-27 00:04 | dev | 1 | 승인 | claude claude-opus-5-5 | 7842888 |  | 루브릭 4개 O. CLAUDE.md 선반영 수용(비보호·사실 일치) → Wiki에서 검수. 권고: 선 투명도 QA-1로 확인, 'Overlays (circles...)' 문구 검토 |
