@@ -1,0 +1,17 @@
+name: pipeline-check
+on:
+  pull_request:
+    branches: [main]
+jobs:
+  merge-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: 병합 위임 조건
+        run: python3 .pipeline/kit/bin/pipeline merge-check --base origin/${{ github.base_ref }}

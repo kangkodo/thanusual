@@ -1,0 +1,315 @@
+#!/usr/bin/env python3
+"""AI 교차검수 파이프라인 CLI. 표준 라이브러리만 사용한다 (Python 3.9+).
+
+하위 명령:
+  init-run SLUG [--quick]        ai-log 실행 폴더를 만들고 현재 실행으로 지정
+  codex ROLE --prompt-file F     Codex 역할 호출 (검수 역할은 항상 읽기 전용)
+  gate [--protect-since REF]     고정층 검사 + 보호 경로 변경 검사
+  verdict --stage S --verdict V  판정 한 줄 기록 + timeline.md 재생성
+  status                         단계별 최신 판정과 조정 필요 여부
+  merge-check --base REF         병합 위임 조건 판정 (CI 필수 검사로도 사용)
+  deploy [--yes]                 배포 미리보기, --yes 면 실행 (사용자 지시가 있을 때만)
+  clean-raw [--days N]           기한이 지난 raw/ 와 QA 캡처 삭제
+"""
+import argparse
+import datetime as dt
+import fnmatch
+import json
+import re
+import shutil
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+KIT = Path(__file__).resolve().parent.parent
+DIRS = ["00-request", "01-planning", "02-development", "03-qa", "04-wiki", "raw"]
+VERDICTS = ["READY", "APPROVED", "REJECTED", "BLOCKED", "PASSED", "FAILED", "ESCALATED"]
+LABEL = {"READY": "READY", "APPROVED": "승인", "REJECTED": "반려", "BLOCKED": "BLOCKED",
+         "PASSED": "PASSED", "FAILED": "FAILED", "ESCALATED": "사람 조정 요청"}
+REVIEW = {"APPROVED", "REJECTED", "PASSED", "FAILED", "BLOCKED"}
+READ_ONLY_ROLES = {"plan-reviewer", "wiki-reviewer", "dev-reviewer"}
+WRITE_ROLES = {"developer", "qa"}
+
+# ponytail: 정규식 마스킹이라 형식이 특이한 비밀은 놓칠 수 있다. 누락이 나오면 패턴을 늘리거나 gitleaks로 바꾼다.
+SECRET = re.compile(
+    r"(?i)((?:api[_-]?key|token|secret|password|passwd|authorization)[\"']?\s*[:=]\s*[\"']?(?:bearer\s+)?)([^\s\"',]{6,})"
+    r"|\b(sk-[A-Za-z0-9_-]{16,}|gh[pousr]_[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16}|xox[baprs]-[A-Za-z0-9-]{10,})")
+
+
+def mask(text):
+    return SECRET.sub(lambda m: m.group(1) + "***" if m.group(1) else "***", text)
+
+
+def git(*args, check=True, strip=True):
+    # quotepath=false: 한글 경로를 이스케이프하지 않아야 경로 비교가 맞는다
+    r = subprocess.run(["git", "-c", "core.quotepath=false", *args], capture_output=True, text=True)
+    if check and r.returncode:
+        sys.exit(f"git {' '.join(args)} 실패: {r.stderr.strip()}")
+    return r.stdout.strip() if strip else r.stdout
+
+
+def root():
+    return Path(git("rev-parse", "--show-toplevel"))
+
+
+def match(path, patterns):
+    # fnmatch의 *는 /도 넘는다. 그래서 "docs/**"는 하위 전체, "*.md"는 모든 깊이의 md에 맞는다.
+    return any(fnmatch.fnmatch(path, p) for p in patterns)
+
+
+def config():
+    p = root() / ".pipeline" / "config.json"
+    if not p.exists():
+        sys.exit(".pipeline/config.json 이 없습니다. 킷의 install.sh 로 설치하세요.")
+    cfg = json.loads(p.read_text(encoding="utf-8"))
+    kv = (KIT / "VERSION").read_text().strip() if (KIT / "VERSION").exists() else "?"
+    if cfg.get("kit_version") != kv:
+        print(f"경고: config kit_version={cfg.get('kit_version')} / 설치된 킷 {kv}", file=sys.stderr)
+    return cfg
+
+
+def current_run(arg=None):
+    if arg:
+        return Path(arg).resolve()
+    p = root() / ".pipeline" / "current-run"
+    if not p.exists():
+        sys.exit("현재 실행이 없습니다. pipeline init-run 을 먼저 실행하세요.")
+    return root() / p.read_text().strip()
+
+
+def load(run):
+    f = run / "verdicts.jsonl"
+    if not f.exists():
+        return []
+    return [json.loads(line) for line in f.read_text(encoding="utf-8").splitlines() if line.strip()]
+
+
+def reviews(recs, stage):
+    return [x for x in recs if x["stage"] == stage and x["verdict"] in REVIEW]
+
+
+def open_ids(rec):
+    return {k for k, v in rec.get("issues", {}).items() if v != "resolved"}
+
+
+def escalation(recs, stage, cap):
+    rv = [x for x in reviews(recs, stage) if x["verdict"] != "BLOCKED"]
+    if not rv or rv[-1]["verdict"] in ("APPROVED", "PASSED"):
+        return None
+    last = rv[-3:]
+    if len(last) == 3:
+        stuck = set.intersection(*(open_ids(x) for x in last))
+        if stuck:
+            return f"지적 {', '.join(sorted(stuck))}이(가) 두 번 수정한 뒤에도 남음"
+    if len(rv) >= cap:
+        return f"검수 {len(rv)}회로 상한({cap}회) 도달"
+    return None
+
+
+def write_timeline(run):
+    rows = ["# 판정 타임라인", "", "`pipeline verdict`가 자동 생성한다. 직접 수정하지 않는다.", "",
+            "| 시각 | 단계 | 회차 | 판정 | 주체 | 커밋 | 지적 | 비고 |", "|---|---|---|---|---|---|---|---|"]
+    for x in load(run):
+        issues = ", ".join(f"{k}:{v}" for k, v in x.get("issues", {}).items())
+        who = " ".join(filter(None, [x.get("actor"), x.get("model")]))
+        note = (x.get("note") or "").replace("|", "/").replace("\n", " ")
+        rows.append(f"| {x['ts'][5:16].replace('T', ' ')} | {x['stage']} | {x['attempt']} | {LABEL[x['verdict']]} "
+                    f"| {who} | {x['commit'][:7]} | {issues} | {note} |")
+    (run / "timeline.md").write_text("\n".join(rows) + "\n", encoding="utf-8")
+
+
+def cmd_init_run(a):
+    r, now = root(), dt.datetime.now()
+    day = r / "ai-log" / now.strftime("%Y%m%d")
+    day.mkdir(parents=True, exist_ok=True)
+    n = len([d for d in day.iterdir() if d.is_dir()]) + 1
+    slug = re.sub(r"[^\w-]+", "-", a.slug).strip("-")
+    run = day / f"{n:03d}_{now:%H%M%S}_{slug}"
+    for d in DIRS:
+        (run / d).mkdir(parents=True)
+    shutil.copy(KIT / "templates" / "request.md", run / "00-request" / "request.md")
+    meta = {"slug": slug, "route": "quick" if a.quick else "full",
+            "branch": git("rev-parse", "--abbrev-ref", "HEAD"), "created": now.isoformat(timespec="seconds")}
+    (run / "meta.json").write_text(json.dumps(meta, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    (r / ".pipeline" / "current-run").write_text(str(run.relative_to(r)))
+    print(run.relative_to(r))
+
+
+def cmd_codex(a):
+    cfg, r = config(), root()
+    run = current_run(a.run)
+    if a.role not in READ_ONLY_ROLES | WRITE_ROLES:
+        sys.exit(f"Codex가 맡을 수 없는 역할: {a.role}")
+    sandbox = "read-only" if a.role in READ_ONLY_ROLES else "workspace-write"
+    c = cfg.get("codex", {})
+    effort = c.get("effort", {}).get(a.role, c.get("default_effort", "high"))
+    task = Path(a.prompt_file).read_text(encoding="utf-8")
+    prompt = "\n\n---\n\n".join([
+        (KIT / "roles" / f"{a.role}.md").read_text(encoding="utf-8"),
+        (KIT / "PIPELINE.md").read_text(encoding="utf-8"),
+        f"# 이번 작업\n\n실행 기록 폴더: `{run.relative_to(r)}`\n\n{task}"])
+    stamp = dt.datetime.now().strftime("%H%M%S")
+    out = run / "raw" / f"{stamp}_{a.role}_reply.md"
+    cmd = ["codex", "exec", "-m", c.get("model", "gpt-6-astra"), "-c", f"model_reasoning_effort={effort}",
+           "-s", sandbox, "--skip-git-repo-check", "--ephemeral", "-o", str(out), "-"]
+    if sandbox == "workspace-write" and c.get("network"):
+        cmd[1:1] = ["-c", "sandbox_workspace_write.network_access=true"]
+    started = time.time()
+    p = subprocess.run(cmd, input=prompt, text=True, capture_output=True, cwd=r)
+    (run / "raw" / f"{stamp}_{a.role}_task.md").write_text(mask(task), encoding="utf-8")
+    reply = mask(out.read_text(encoding="utf-8")) if out.exists() else ""
+    if out.exists():
+        out.write_text(reply, encoding="utf-8")
+    print(reply)
+    print(f"\n[codex {a.role} · {sandbox} · {effort} · {time.time() - started:.0f}s · exit {p.returncode}]", file=sys.stderr)
+    if p.returncode:
+        print(mask(p.stderr[-2000:]), file=sys.stderr)
+        sys.exit(p.returncode)
+
+
+def cmd_gate(a):
+    cfg, r = config(), root()
+    failed = []
+    if a.protect_since:
+        changed = set(git("diff", "--name-only", a.protect_since).splitlines())
+        changed |= set(git("ls-files", "--others", "--exclude-standard").splitlines())
+        hit = sorted(f for f in changed if match(f, cfg.get("protected", [])))
+        if hit:
+            failed.append("보호 경로 변경: " + ", ".join(hit))
+    # 명령은 프로젝트의 config.json에서 온다(package.json 스크립트와 같은 신뢰 수준). config는 보호 경로다.
+    for g in cfg.get("gate", []):
+        print(f"▶ {g['name']}: {g['run']}", flush=True)
+        if subprocess.run(g["run"], shell=True, cwd=r).returncode:
+            failed.append(g["name"])
+    if failed:
+        sys.exit("gate 실패: " + " / ".join(failed))
+    print("gate 통과")
+
+
+def cmd_verdict(a):
+    run = current_run(a.run)
+    recs = load(run)
+    if a.verdict in ("APPROVED", "PASSED"):
+        if a.unverified:
+            sys.exit("미검증 항목이 있으면 승인할 수 없습니다 (R13).")
+        dirty = [line for line in git("status", "--porcelain", strip=False).splitlines()
+                 if line.strip() and not line[3:].strip('"').startswith("ai-log/")]
+        if dirty:
+            sys.exit("커밋되지 않은 변경이 있습니다. 승인은 커밋된 상태에만 기록합니다.\n" + "\n".join(dirty[:10]))
+    submissions = [x for x in recs if x["stage"] == a.stage and x["verdict"] == "READY"]
+    attempt = a.attempt or (len(submissions) + (1 if a.verdict == "READY" else 0)) or 1
+    issues = dict(kv.split("=", 1) for kv in a.issues.split(",")) if a.issues else {}
+    rec = {"ts": dt.datetime.now().isoformat(timespec="seconds"), "stage": a.stage, "attempt": attempt,
+           "verdict": a.verdict, "actor": a.actor, "model": a.model, "commit": git("rev-parse", "HEAD"),
+           "issues": issues, "unverified": a.unverified or [], "evidence": a.evidence or [],
+           "tokens": a.tokens, "note": a.note}
+    with open(run / "verdicts.jsonl", "a", encoding="utf-8") as f:
+        f.write(json.dumps(rec, ensure_ascii=False) + "\n")
+    write_timeline(run)
+    print(f"기록: {a.stage} #{attempt} {LABEL[a.verdict]} @ {rec['commit'][:7]}")
+    esc = escalation(load(run), a.stage, config().get("cap", 3))
+    if esc:
+        print(f"조정 필요: {esc}. ESCALATED를 기록하고 사용자에게 묻습니다.")
+
+
+def cmd_status(a):
+    run, cap = current_run(a.run), config().get("cap", 3)
+    recs = load(run)
+    meta = json.loads((run / "meta.json").read_text(encoding="utf-8"))
+    print(f"{run.relative_to(root())} · 경로 {meta['route']}")
+    for st in ["request", "plan", "dev", "qa", "wiki"]:
+        rv = reviews(recs, st)
+        last = rv[-1] if rv else None
+        esc = escalation(recs, st, cap)
+        state = f"{LABEL[last['verdict']]} @ {last['commit'][:7]}" if last else "-"
+        opened = ", ".join(sorted(open_ids(last))) if last else ""
+        print(f"  {st:<8} 검수 {len(rv)}/{cap}  최신 {state}  {('미해결 ' + opened) if opened else ''}"
+              f"{('  ⚠ ' + esc) if esc else ''}")
+
+
+def cmd_merge_check(a):
+    cfg = config()
+    base = git("merge-base", a.base, "HEAD")
+    changed = git("diff", "--name-only", base, "HEAD").splitlines()
+    runs = sorted({"/".join(f.split("/")[:3]) for f in changed if f.startswith("ai-log/") and f.count("/") >= 3})
+    if len(runs) != 1:
+        sys.exit(f"✗ 이 변경에 연결된 실행 기록이 {len(runs)}개입니다. 1개여야 합니다: {runs}")
+    run = root() / runs[0]
+    recs = load(run)
+    meta = json.loads((run / "meta.json").read_text(encoding="utf-8"))
+    stages = cfg.get("quick_stages" if meta["route"] == "quick" else "required_stages",
+                     ["request", "plan", "dev", "qa", "wiki"])
+    problems = []
+    hit = [f for f in changed if not f.startswith("ai-log/") and match(f, cfg.get("forbidden", []))]
+    if hit:
+        problems.append("금지 경로 변경: " + ", ".join(hit))
+    if any(x["verdict"] == "ESCALATED" for x in recs):
+        problems.append("사람 조정 요청(ESCALATED) 기록이 있음")
+    for st in stages:
+        rv = reviews(recs, st)
+        want = "PASSED" if st == "qa" else "APPROVED"
+        if not rv or rv[-1]["verdict"] != want:
+            problems.append(f"{st}: 최종 판정이 {LABEL[want]}이 아님 ({LABEL[rv[-1]['verdict']] if rv else '없음'})")
+            continue
+        if rv[-1].get("unverified"):
+            problems.append(f"{st}: 미검증 항목 {rv[-1]['unverified']}")
+        # ponytail: request·plan은 버전 대조를 하지 않는다. 기획 문서가 승인 뒤 바뀌는 사고가 나오면 대조 대상에 넣는다.
+        if st in ("dev", "qa", "wiki"):
+            skip = ["ai-log/*"] + (cfg.get("doc_paths", []) if st != "wiki" else [])
+            moved = [f for f in git("diff", "--name-only", rv[-1]["commit"], "HEAD").splitlines() if not match(f, skip)]
+            if moved:
+                problems.append(f"{st} 승인 뒤 바뀐 파일: " + ", ".join(moved[:10]))
+    if problems:
+        print(f"✗ 자동 병합 불가 ({runs[0]})")
+        for p in problems:
+            print(f"  - {p}")
+        sys.exit(1)
+    print(f"✓ 자동 병합 조건 충족 ({runs[0]}, 단계 {', '.join(stages)})")
+
+
+def cmd_deploy(a):
+    d = config().get("deploy") or sys.exit("config.deploy 가 없습니다.")
+    subprocess.run(d["preview"], shell=True, cwd=root())
+    if not a.yes:
+        print("\n위 변경이 배포됩니다. 사용자 지시를 받은 뒤 --yes 로 실행합니다.")
+        return
+    sys.exit(subprocess.run(d["command"], shell=True, cwd=root()).returncode)
+
+
+def cmd_clean_raw(a):
+    days = a.days or config().get("raw_retention_days", 30)
+    cutoff = time.time() - days * 86400
+    for run in (root() / "ai-log").glob("*/*/"):
+        for sub in ("raw", "03-qa/captures"):
+            d = run / sub
+            if d.is_dir() and d.stat().st_mtime < cutoff:
+                shutil.rmtree(d)
+                print(f"삭제: {d.relative_to(root())}")
+
+
+def main(argv=None):
+    ap = argparse.ArgumentParser(prog="pipeline", description=__doc__.split("\n")[0])
+    sp = ap.add_subparsers(dest="cmd", required=True)
+    p = sp.add_parser("init-run"); p.add_argument("slug"); p.add_argument("--quick", action="store_true")
+    p.set_defaults(fn=cmd_init_run)
+    p = sp.add_parser("codex"); p.add_argument("role"); p.add_argument("--prompt-file", required=True)
+    p.add_argument("--run"); p.set_defaults(fn=cmd_codex)
+    p = sp.add_parser("gate"); p.add_argument("--protect-since"); p.set_defaults(fn=cmd_gate)
+    p = sp.add_parser("verdict")
+    p.add_argument("--stage", required=True, choices=["request", "plan", "dev", "qa", "wiki"])
+    p.add_argument("--verdict", required=True, choices=VERDICTS)
+    p.add_argument("--attempt", type=int); p.add_argument("--actor"); p.add_argument("--model")
+    p.add_argument("--issues", help="P-1=open,P-2=resolved"); p.add_argument("--unverified", nargs="*")
+    p.add_argument("--evidence", nargs="*"); p.add_argument("--tokens", type=int); p.add_argument("--note")
+    p.add_argument("--run"); p.set_defaults(fn=cmd_verdict)
+    p = sp.add_parser("status"); p.add_argument("--run"); p.set_defaults(fn=cmd_status)
+    p = sp.add_parser("merge-check"); p.add_argument("--base", required=True); p.set_defaults(fn=cmd_merge_check)
+    p = sp.add_parser("deploy"); p.add_argument("--yes", action="store_true"); p.set_defaults(fn=cmd_deploy)
+    p = sp.add_parser("clean-raw"); p.add_argument("--days", type=int); p.set_defaults(fn=cmd_clean_raw)
+    a = ap.parse_args(argv)
+    a.fn(a)
+
+
+if __name__ == "__main__":
+    main()
