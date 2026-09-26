@@ -14,3 +14,5 @@
 | 09-27 00:01 | dev | 1 | READY | codex gpt-6-astra | 7842888 |  | gate: 테스트 통과(41+11). 보호 경로 경고는 usage.jsonl(CLI 기록, 킷 오탐). CLAUDE.md를 개발이 수정함 → 검수 확인 요청 |
 | 09-27 00:04 | dev | 1 | 승인 | claude claude-opus-5-5 | 7842888 |  | 루브릭 4개 O. CLAUDE.md 선반영 수용(비보호·사실 일치) → Wiki에서 검수. 권고: 선 투명도 QA-1로 확인, 'Overlays (circles...)' 문구 검토 |
 | 09-27 00:17 | qa | 1 | FAILED | codex gpt-6-astra | a1a3b85 | Q-1:open, Q-2:open | Q-1 같은 농도 칸 사이 가는 경계선(z13·15, Master 캡처 확인) / Q-2 index.html 출처 문단에 '점은 격자 중심' 문구 잔존(기획 누락). 수용 테스트·성능 3기준 통과 |
+| 09-27 00:27 | dev | 2 | READY | codex gpt-6-astra | 73a0b14 |  | 복구 2회차. gate 테스트 통과(42+11). usage.jsonl 경고는 킷 오탐(1줄 추가만) |
+| 09-27 00:30 | dev | 2 | 승인 | claude claude-opus-5-5 | 73a0b14 |  | 복구 2회차 승인. Q-1 원리적 해결(농도별 단일 경로·선 없음, nonzero). 대체 검수 에이전트가 명령 1회 실행(읽기 전용 지시 위반, 파일 변경 없음) — 킷 개선 항목 |
