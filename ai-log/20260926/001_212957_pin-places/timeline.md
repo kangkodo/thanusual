@@ -9,3 +9,5 @@
 | 09-26 21:36 | plan | 1 | 반려 | codex gpt-6-astra | f2b1ba2 | P-1:open, P-2:open, P-3:open, P-4:open | fresh 아닌 장소 제외가 R-3와 충돌 / 시간 모드별 입력 미정 / 포커스 계약 부족 / AC-1 불변성 검증 누락 |
 | 09-26 21:37 | plan | 2 | READY | claude | cae577c |  | P-1~P-4 반영, 상태 계약 절 추가 |
 | 09-26 21:40 | plan | 2 | 승인 | codex gpt-6-astra | cae577c | P-1:resolved, P-2:resolved, P-3:resolved, P-4:resolved | 루브릭 5개 O, 신규 지적 없음 |
+| 09-26 21:48 | dev | 1 | READY | codex gpt-6-astra | cfa2d40 |  | gate: 테스트 통과, 보호 경로 경고는 todo.md 체크·근거만(킷 오탐, 수동 확인) |
+| 09-26 21:53 | dev | 1 | 승인 | claude claude-opus-5-5 | cfa2d40 |  | 루브릭 4개 O. 권고 4건(★ aria-hidden, aria-current 중복, 건너뛰기 링크 대상, aria-pressed+이름 이중 안내) — 후속 작업 후보 |
