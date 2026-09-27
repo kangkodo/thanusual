@@ -1,11 +1,12 @@
 {
-  "kit_version": "0.1.2",
+  "kit_version": "0.1.3",
   "codex": {
     "model": "gpt-6-astra",
     "default_effort": "high",
     "effort": { "plan-reviewer": "xhigh", "wiki-reviewer": "high", "developer": "high", "qa": "high" },
     "network": false
   },
+  "claude": { "model": "claude-opus-5-5" },
   "pairing": { "developer": "codex", "reviewer": "claude" },
   "cap": 3,
   "gate": [

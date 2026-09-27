@@ -4,6 +4,8 @@
 하위 명령:
   init-run SLUG [--quick]        ai-log 실행 폴더를 만들고 현재 실행으로 지정
   codex ROLE --prompt-file F     Codex 역할 호출 (검수 역할은 항상 읽기 전용)
+  claude ROLE --prompt-file F    Claude 검수 호출 (읽기 도구만, MCP 없음, 사용량 기록)
+  verify                         설치된 킷 복사본이 봉인 그대로인지 확인
   gate [--protect-since REF]     고정층 검사 + 보호 경로 변경 검사
   verdict --stage S --verdict V  판정 한 줄 기록 + timeline.md 재생성
   status                         단계별 최신 판정과 조정 필요 여부
@@ -14,6 +16,7 @@
 import argparse
 import datetime as dt
 import fnmatch
+import hashlib
 import json
 import re
 import shutil
@@ -56,6 +59,47 @@ def root():
 def match(path, patterns):
     # fnmatch의 *는 /도 넘는다. 그래서 "docs/**"는 하위 전체, "*.md"는 모든 깊이의 md에 맞는다.
     return any(fnmatch.fnmatch(path, p) for p in patterns)
+
+
+MANIFEST = "MANIFEST.sha256"
+SKIP = {MANIFEST, ".DS_Store"}
+
+
+def kit_files(base):
+    return sorted(str(p.relative_to(base)) for p in base.rglob("*")
+                  if p.is_file() and p.name not in SKIP and "__pycache__" not in p.parts)
+
+
+def verify_kit(base=KIT):
+    """설치된 킷 복사본이 설치 당시 그대로인지. 문제 목록을 돌려준다(빈 목록 = 봉인 유지). 봉인 파일은 install.sh가 쓴다."""
+    m = base / MANIFEST
+    if not m.exists():
+        return [f"{MANIFEST} 없음 (install.sh로 다시 설치하세요)"]
+    want = {}
+    for line in m.read_text(encoding="utf-8").splitlines():
+        if line and not line.startswith("#"):
+            digest, name = line.split("  ", 1)
+            want[name] = digest
+    problems = []
+    for name in kit_files(base):
+        if name not in want:
+            problems.append(f"추가됨: {name}")
+        elif hashlib.sha256((base / name).read_bytes()).hexdigest() != want.pop(name):
+            problems.append(f"변경됨: {name}")
+    problems += [f"삭제됨: {name}" for name in want]
+    return problems
+
+
+def require_sealed():
+    problems = verify_kit()
+    if problems:
+        sys.exit("킷 복사본이 원본과 다릅니다. 프로젝트에서 킷을 고치지 말고 원본에서 고쳐 다시 설치하세요.\n  "
+                 + "\n  ".join(problems[:10]))
+
+
+def cmd_verify(a):
+    require_sealed()
+    print("킷 봉인 유지: 설치 당시와 같음")
 
 
 def config():
@@ -163,7 +207,7 @@ def cmd_codex(a):
     if out.exists():
         out.write_text(reply, encoding="utf-8")
     usage = sum_usage(p.stdout)
-    rec = {"ts": dt.datetime.now().isoformat(timespec="seconds"), "role": a.role, "model": model, "effort": effort,
+    rec = {"ts": dt.datetime.now().isoformat(timespec="seconds"), "engine": "codex", "role": a.role, "model": model, "effort": effort,
            "seconds": round(time.time() - started), "exit": p.returncode, **usage}
     with open(run / "usage.jsonl", "a", encoding="utf-8") as f:
         f.write(json.dumps(rec, ensure_ascii=False) + "\n")
@@ -176,6 +220,14 @@ def cmd_codex(a):
 
 
 TODO_FILE = "ai-log/*/01-planning/todo.md"
+USAGE_FILE = "ai-log/*/usage.jsonl"
+
+
+def appended_only(ref, path):
+    """파이프라인 CLI가 쓰는 사용량 기록처럼, 기존 줄은 그대로 두고 줄만 덧붙였는지."""
+    diff = git("diff", "-U0", ref, "--", path, strip=False).splitlines()
+    body = [l for l in diff if l[:1] in "+-" and not l.startswith(("+++", "---"))]
+    return all(l.startswith("+") for l in body)
 
 
 def todo_checks_only(ref, path):
@@ -206,14 +258,59 @@ def sum_usage(jsonl):
     return total
 
 
+CLAUDE_TOOLS = "Read,Grep,Glob"
+
+
+def cmd_claude(a):
+    """Claude 검수를 읽기 도구만 켠 헤드리스 세션으로 돌린다. MCP 서버도 싣지 않는다."""
+    cfg, r = config(), root()
+    run = current_run(a.run)
+    if a.role not in READ_ONLY_ROLES:
+        sys.exit(f"pipeline claude는 검수 역할만 맡는다: {sorted(READ_ONLY_ROLES)}")
+    model = cfg.get("claude", {}).get("model", "claude-opus-5-5")
+    task = Path(a.prompt_file).read_text(encoding="utf-8")
+    prompt = "\n\n---\n\n".join([
+        (KIT / "roles" / f"{a.role}.md").read_text(encoding="utf-8"),
+        (KIT / "PIPELINE.md").read_text(encoding="utf-8"),
+        f"# 이번 작업\n\n실행 기록 폴더: `{run.relative_to(r)}`\n\n{task}"])
+    cmd = ["claude", "-p", "--model", model, "--tools", CLAUDE_TOOLS, "--permission-mode", "dontAsk",
+           "--strict-mcp-config", "--no-session-persistence", "--output-format", "json"]
+    started = time.time()
+    p = subprocess.run(cmd, input=prompt, text=True, capture_output=True, cwd=r)
+    try:
+        out = json.loads(p.stdout)
+    except ValueError:
+        out = {}
+    u = out.get("usage", {})
+    usage = {"input_tokens": (u.get("input_tokens") or 0) + (u.get("cache_creation_input_tokens") or 0) + (u.get("cache_read_input_tokens") or 0),
+             "cached_input_tokens": u.get("cache_read_input_tokens") or 0, "output_tokens": u.get("output_tokens") or 0,
+             "reasoning_output_tokens": 0, "cost_usd": out.get("total_cost_usd")}
+    rec = {"ts": dt.datetime.now().isoformat(timespec="seconds"), "engine": "claude", "role": a.role, "model": model,
+           "seconds": round(time.time() - started), "exit": p.returncode, **usage}
+    with open(run / "usage.jsonl", "a", encoding="utf-8") as f:
+        f.write(json.dumps(rec, ensure_ascii=False) + "\n")
+    stamp = dt.datetime.now().strftime("%H%M%S")
+    reply = mask(out.get("result") or "")
+    (run / "raw" / f"{stamp}_{a.role}_task.md").write_text(mask(task), encoding="utf-8")
+    (run / "raw" / f"{stamp}_{a.role}_reply.md").write_text(reply, encoding="utf-8")
+    print(reply)
+    print(f"\n[claude {a.role} · 읽기 전용({CLAUDE_TOOLS}) · {rec['seconds']}s · in {usage['input_tokens']:,} / "
+          f"out {usage['output_tokens']:,} tok · ${usage['cost_usd'] or 0:.2f} · exit {p.returncode}]", file=sys.stderr)
+    if p.returncode or not out:
+        print(mask(p.stderr[-2000:]), file=sys.stderr)
+        sys.exit(p.returncode or 1)
+
+
 def cmd_gate(a):
+    require_sealed()
     cfg, r = config(), root()
     failed = []
     if a.protect_since:
         changed = set(git("diff", "--name-only", a.protect_since).splitlines())
         changed |= set(git("ls-files", "--others", "--exclude-standard").splitlines())
         hit = sorted(f for f in changed if match(f, cfg.get("protected", []))
-                     and not (match(f, [TODO_FILE]) and todo_checks_only(a.protect_since, f)))
+                     and not (match(f, [TODO_FILE]) and todo_checks_only(a.protect_since, f))
+                     and not (match(f, [USAGE_FILE]) and appended_only(a.protect_since, f)))
         if hit:
             failed.append("보호 경로 변경: " + ", ".join(hit))
     # 명령은 프로젝트의 config.json에서 온다(package.json 스크립트와 같은 신뢰 수준). config는 보호 경로다.
@@ -260,8 +357,13 @@ def cmd_status(a):
     uf = run / "usage.jsonl"
     if uf.exists():
         calls = [json.loads(line) for line in uf.read_text(encoding="utf-8").splitlines() if line.strip()]
-        tin, tout = sum(c["input_tokens"] for c in calls), sum(c["output_tokens"] for c in calls)
-        print(f"  Codex 호출 {len(calls)}회 · 입력 {tin:,} · 출력 {tout:,} 토큰 · {sum(c['seconds'] for c in calls)}초 (Claude 측 미수집)")
+        for engine in ("codex", "claude"):
+            cs = [c for c in calls if c.get("engine", "codex") == engine]
+            if cs:
+                cost = sum(c.get("cost_usd") or 0 for c in cs)
+                print(f"  {engine} 호출 {len(cs)}회 · 입력 {sum(c['input_tokens'] for c in cs):,} · 출력 "
+                      f"{sum(c['output_tokens'] for c in cs):,} 토큰 · {sum(c['seconds'] for c in cs)}초"
+                      + (f" · ${cost:.2f}" if cost else ""))
     for st in ["request", "plan", "dev", "qa", "wiki"]:
         rv = reviews(recs, st)
         last = rv[-1] if rv else None
@@ -273,6 +375,7 @@ def cmd_status(a):
 
 
 def cmd_merge_check(a):
+    require_sealed()
     cfg = config()
     base = git("merge-base", a.base, "HEAD")
     changed = git("diff", "--name-only", base, "HEAD").splitlines()
@@ -339,6 +442,9 @@ def main(argv=None):
     p.set_defaults(fn=cmd_init_run)
     p = sp.add_parser("codex"); p.add_argument("role"); p.add_argument("--prompt-file", required=True)
     p.add_argument("--run"); p.set_defaults(fn=cmd_codex)
+    p = sp.add_parser("claude"); p.add_argument("role"); p.add_argument("--prompt-file", required=True)
+    p.add_argument("--run"); p.set_defaults(fn=cmd_claude)
+    p = sp.add_parser("verify"); p.set_defaults(fn=cmd_verify)
     p = sp.add_parser("gate"); p.add_argument("--protect-since"); p.set_defaults(fn=cmd_gate)
     p = sp.add_parser("verdict")
     p.add_argument("--stage", required=True, choices=["request", "plan", "dev", "qa", "wiki"])

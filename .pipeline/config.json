@@ -1,28 +1,73 @@
 {
-  "kit_version": "0.1.2",
+  "kit_version": "0.1.3",
   "codex": {
     "model": "gpt-6-astra",
     "default_effort": "high",
-    "effort": { "plan-reviewer": "xhigh", "wiki-reviewer": "high", "developer": "high", "qa": "high" },
+    "effort": {
+      "plan-reviewer": "xhigh",
+      "wiki-reviewer": "high",
+      "developer": "high",
+      "qa": "high"
+    },
     "network": false
   },
-  "pairing": { "developer": "codex", "reviewer": "claude" },
+  "claude": {
+    "model": "claude-opus-5-5"
+  },
+  "pairing": {
+    "developer": "codex",
+    "reviewer": "claude"
+  },
   "cap": 3,
   "gate": [
-    { "name": "test", "run": "npm test" },
-    { "name": "acceptance", "run": "sh -c 'set -- tests/acceptance/*.test.js; [ -e \"$1\" ] || exit 0; node --test \"$@\"'" }
+    {
+      "name": "test",
+      "run": "npm test"
+    },
+    {
+      "name": "acceptance",
+      "run": "sh -c 'set -- tests/acceptance/*.test.js; [ -e \"$1\" ] || exit 0; node --test \"$@\"'"
+    }
   ],
-  "protected": [".pipeline/*", "ai-log/*", "tests/acceptance/*"],
+  "protected": [
+    ".pipeline/*",
+    "ai-log/*",
+    "tests/acceptance/*"
+  ],
   "forbidden": [
-    ".github/workflows/*", "wrangler.toml", "_headers", "package.json",
-    "functions/*", "lib/tiles.js",
-    "scripts/poll.sh", "scripts/poller.py", "scripts/collect*.py", "scripts/baseline.py",
-    "scripts/seoul_api.py", "scripts/timeline.py",
-    ".dev.vars", "*.env", "secrets/*", "*.key"
+    ".github/workflows/*",
+    "wrangler.toml",
+    "_headers",
+    "package.json",
+    "functions/*",
+    "lib/tiles.js",
+    "scripts/poll.sh",
+    "scripts/poller.py",
+    "scripts/collect*.py",
+    "scripts/baseline.py",
+    "scripts/seoul_api.py",
+    "scripts/timeline.py",
+    ".dev.vars",
+    "*.env",
+    "secrets/*",
+    "*.key"
   ],
-  "doc_paths": ["docs/*", "*.md"],
-  "required_stages": ["request", "plan", "dev", "qa", "wiki"],
-  "quick_stages": ["request", "dev", "qa"],
+  "doc_paths": [
+    "docs/*",
+    "*.md"
+  ],
+  "required_stages": [
+    "request",
+    "plan",
+    "dev",
+    "qa",
+    "wiki"
+  ],
+  "quick_stages": [
+    "request",
+    "dev",
+    "qa"
+  ],
   "qa": {
     "runner": "codex",
     "acceptance": "tests/acceptance",
