@@ -1,5 +1,5 @@
 {
-  "kit_version": "0.2.0",
+  "kit_version": "0.2.2",
   "codex": {
     "model": "gpt-6-astra",
     "default_effort": "high",
@@ -9,7 +9,8 @@
       "developer": "high",
       "qa": "high"
     },
-    "network": false
+    "network": false,
+    "ephemeral": false
   },
   "claude": {
     "model": "claude-opus-5-5"

@@ -197,7 +197,9 @@ def cmd_codex(a):
     out = run / "raw" / f"{stamp}_{a.role}_reply.md"
     model = c.get("model", "gpt-6-astra")
     cmd = ["codex", "exec", "-m", model, "-c", f"model_reasoning_effort={effort}",
-           "-s", sandbox, "--skip-git-repo-check", "--ephemeral", "--json", "-o", str(out), "-"]
+           "-s", sandbox, "--skip-git-repo-check", "--json", "-o", str(out), "-"]
+    if c.get("ephemeral"):
+        cmd.insert(-1, "--ephemeral")
     if sandbox == "workspace-write" and c.get("network"):
         cmd[1:1] = ["-c", "sandbox_workspace_write.network_access=true"]
     started = time.time()

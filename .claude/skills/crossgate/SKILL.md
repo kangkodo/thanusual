@@ -1,6 +1,6 @@
 ---
 name: crossgate
-description: AI 교차검수 개발 파이프라인의 Master 플레이북. 사용자가 /crossgate 으로 기능 개발·수정을 요청하거나, 이 저장소에 .crossgate/config.json 이 있고 사용자가 "파이프라인으로 진행"이라고 할 때 사용한다. Claude가 Master로서 요청 정리·기획·Wiki를 맡고, Codex에게 개발·기획 검수·QA·Wiki 검수를 맡기며, 모든 판정을 ai-log에 기록하고, 조건을 만족하면 자동 병합한다.
+description: Crossgate(AI 교차검수 개발 파이프라인)의 Master 플레이북. "/crossgate 업그레이드"로 킷을 새 버전으로 올릴 수도 있다. 사용자가 /crossgate 으로 기능 개발·수정을 요청하거나, 이 저장소에 .crossgate/config.json 이 있고 사용자가 "파이프라인으로 진행"이라고 할 때 사용한다. Claude가 Master로서 요청 정리·기획·Wiki를 맡고, Codex에게 개발·기획 검수·QA·Wiki 검수를 맡기며, 모든 판정을 ai-log에 기록하고, 조건을 만족하면 자동 병합한다.
 ---
 
 # /crossgate — Crossgate Master 플레이북
@@ -65,6 +65,18 @@ description: AI 교차검수 개발 파이프라인의 Master 플레이북. 사�
 1. `$P verdict --stage <단계> --verdict ESCALATED --note "<사유>"`.
 2. 사용자에게 한 화면으로 보여준다: 쟁점 지적 ID, 작업 AI의 주장, 검수 AI의 주장, 선택지.
 3. 사용자의 결정을 request.md 확인 기록에 남기고 이어서 진행한다. 이 실행은 자동 병합되지 않는다(merge-check 조건 4).
+
+## 8. 업그레이드 (`/crossgate 업그레이드`)
+
+사용자가 크게를 새 버전으로 올려 달라고 하면 개발 작업 대신 이 절차를 따른다.
+
+1. 설치된 버전은 `.crossgate/kit/VERSION`, 원본 위치는 `.crossgate/local.json`의 `kit_source`(이 컴퓨터 전용, git 제외)다. 그 폴더가 없으면 `kit_remote`를 임시 폴더에 clone해서 쓴다. `local.json`이 없으면(다른 컴퓨터에서 받은 저장소) 사용자에게 원본 위치를 묻는다.
+2. 원본에 원격이 있으면 `git -C <원본> fetch -q --tags` 후, 최신 태그를 `git -C <원본> tag --sort=-v:refname | head -1`로 찾는다.
+3. 설치된 버전과 같으면 "최신입니다"라고 보고하고 끝낸다.
+4. 다르면 작업 트리가 깨끗한지 확인하고 브랜치 `crossgate-<버전>`을 만든다. 그다음 `sh <원본>/install.sh --ref <태그> .`로 설치하고, `config.json`의 `kit_version`을 올리고, `$P verify`와 `$P gate`를 돌린다.
+5. 원본 `CHANGELOG.md`에서 두 버전 사이 항목을 PR 본문에 옮긴다. 커밋·푸시·PR 순서로 진행한다.
+6. 인프라 PR이라 `merge-check`는 "실행 기록 0개"로 실패하는 게 정상이다. 그 사유가 맞는지 로그로 확인하고, 나머지 필수 검사(테스트)가 통과하면 관리자 권한으로 병합한다(명세 12.10). 사유가 다르거나 테스트가 실패하면 병합하지 않고 사용자에게 보고한다.
+7. 보고: 이전 → 새 버전, 바뀐 점(CHANGELOG 요약), PR 링크.
 
 ## 늘 지킬 것
 
