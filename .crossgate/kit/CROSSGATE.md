@@ -88,7 +88,12 @@
 
 자동 배포는 없다. 사용자가 지시할 때만 `crossgate deploy`로 미리보기를 보여주고, `--yes`로 실행한다.
 
-## 9. 경로
+## 9. 설치와 업그레이드
+
+- 새 프로젝트: 전역 스킬 `/crossgate-setup`(설치 명령 `install.sh --global`)이 적용 전 점검 → 설치 → 설정 → CI까지 진행한다.
+- 새 버전: 프로젝트에서 `/crossgate 업그레이드`. 원본 위치는 설치 때 git이 무시하는 `.crossgate/local.json`(`kit_source`·`kit_remote`)에 기록된다. 개인 경로가 들어가므로 커밋하지 않는다.
+
+## 10. 경로
 
 - 정식 경로: 기본값. 필수 단계는 `config.required_stages`.
 - 간단 수정 경로: 사용자가 명시할 때만(`init-run --quick`). 필수 단계는 `config.quick_stages`. 금지 경로를 건드리면 정식 경로로 승격하고 건너뛴 검수를 보충한다.

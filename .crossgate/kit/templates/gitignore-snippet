@@ -1,4 +1,5 @@
 # crossgate
 .crossgate/current-run
+.crossgate/local.json
 ai-log/*/*/raw/
 ai-log/*/*/03-qa/captures/
