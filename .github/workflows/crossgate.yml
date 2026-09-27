@@ -1,4 +1,4 @@
-name: pipeline-check
+name: crossgate
 on:
   pull_request:
     branches: [main, next]
@@ -16,4 +16,4 @@ jobs:
       - name: 수용 테스트
         run: sh -c 'set -- tests/acceptance/*.test.js; [ -e "$1" ] || exit 0; node --test "$@"'
       - name: 병합 위임 조건
-        run: python3 .pipeline/kit/bin/pipeline merge-check --base origin/${{ github.base_ref }}
+        run: python3 .crossgate/kit/bin/crossgate merge-check --base origin/${{ github.base_ref }}

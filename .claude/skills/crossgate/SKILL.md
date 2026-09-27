@@ -1,13 +1,13 @@
 ---
-name: pipeline
-description: AI 교차검수 개발 파이프라인의 Master 플레이북. 사용자가 /pipeline 으로 기능 개발·수정을 요청하거나, 이 저장소에 .pipeline/config.json 이 있고 사용자가 "파이프라인으로 진행"이라고 할 때 사용한다. Claude가 Master로서 요청 정리·기획·Wiki를 맡고, Codex에게 개발·기획 검수·QA·Wiki 검수를 맡기며, 모든 판정을 ai-log에 기록하고, 조건을 만족하면 자동 병합한다.
+name: crossgate
+description: AI 교차검수 개발 파이프라인의 Master 플레이북. 사용자가 /crossgate 으로 기능 개발·수정을 요청하거나, 이 저장소에 .crossgate/config.json 이 있고 사용자가 "파이프라인으로 진행"이라고 할 때 사용한다. Claude가 Master로서 요청 정리·기획·Wiki를 맡고, Codex에게 개발·기획 검수·QA·Wiki 검수를 맡기며, 모든 판정을 ai-log에 기록하고, 조건을 만족하면 자동 병합한다.
 ---
 
-# /pipeline — Master 플레이북
+# /crossgate — Crossgate Master 플레이북
 
-너는 Master다. 사용자와 대화하는 유일한 창구이자 유일한 기록자다. 규칙 원문은 `.pipeline/kit/PIPELINE.md`이고, 이 문서는 실행 순서다. 먼저 `PIPELINE.md`와 `.pipeline/config.json`을 읽는다.
+너는 Master다. 사용자와 대화하는 유일한 창구이자 유일한 기록자다. 규칙 원문은 `.crossgate/kit/CROSSGATE.md`이고, 이 문서는 실행 순서다. 먼저 `CROSSGATE.md`와 `.crossgate/config.json`을 읽는다.
 
-`P` = `python3 .pipeline/kit/bin/pipeline`
+`P` = `python3 .crossgate/kit/bin/crossgate`
 
 ## 0. 시작
 
@@ -35,7 +35,7 @@ description: AI 교차검수 개발 파이프라인의 Master 플레이북. 사�
 2. 작업 지시 파일(`02-development/task-N.md`)에 구현할 DEV 항목, 관련 파일, 이전 차단 지적을 적고: `$P codex developer --prompt-file <그 파일>`.
 3. `$P gate --protect-since BASE`. 보호 경로 변경이 나오면 그 변경을 되돌리고(`git checkout BASE -- <경로>`) 반려로 처리한다. 검사 실패도 LLM 검수 없이 바로 2로 돌아간다.
 4. 통과하면 커밋하고 `$P verdict --stage dev --verdict READY --actor codex`.
-5. `git diff BASE..HEAD > <run>/raw/dev-diff-N.patch` 를 만든 뒤 검수 지시 파일을 쓰고 `$P claude dev-reviewer --prompt-file <그 파일>`로 검수를 맡긴다. 이 명령은 읽기 도구만 켜고 MCP를 싣지 않아 읽기 전용이 기계로 강제되며 사용량·비용이 기록된다. `claude` 명령을 쓸 수 없는 환경에서만 Agent 도구로 `pipeline-reviewer` 서브에이전트에게 맡긴다. diff 경로, `todo.md`, 개발 루브릭, 이전 지적 ID를 넘긴다. 세션을 다른 폴더에서 시작해 `pipeline-reviewer`가 등록돼 있지 않으면, 읽기 전용 도구만 가진 에이전트(예: Explore)에 `.claude/agents/pipeline-reviewer.md` 본문을 그대로 지시로 넘기고, 판정 기록 비고에 대체 사실을 적는다.
+5. `git diff BASE..HEAD > <run>/raw/dev-diff-N.patch` 를 만든 뒤 검수 지시 파일을 쓰고 `$P claude dev-reviewer --prompt-file <그 파일>`로 검수를 맡긴다. 이 명령은 읽기 도구만 켜고 MCP를 싣지 않아 읽기 전용이 기계로 강제되며 사용량·비용이 기록된다. `claude` 명령을 쓸 수 없는 환경에서만 Agent 도구로 `crossgate-reviewer` 서브에이전트에게 맡긴다. diff 경로, `todo.md`, 개발 루브릭, 이전 지적 ID를 넘긴다. 세션을 다른 폴더에서 시작해 `crossgate-reviewer`가 등록돼 있지 않으면, 읽기 전용 도구만 가진 에이전트(예: Explore)에 `.claude/agents/crossgate-reviewer.md` 본문을 그대로 지시로 넘기고, 판정 기록 비고에 대체 사실을 적는다.
 6. 판정을 `$P verdict --stage dev ... --actor claude`로 기록한다. 반려면 2로 돌아간다.
 
 ## 4. 독립 QA (`qa`) — Codex
@@ -68,7 +68,7 @@ description: AI 교차검수 개발 파이프라인의 Master 플레이북. 사�
 
 ## 늘 지킬 것
 
-- `ai-log/`와 판정은 `pipeline` 명령으로만 쓴다. 검수 AI에게 쓰기 권한을 주지 않는다.
+- `ai-log/`와 판정은 `crossgate` 명령으로만 쓴다. 검수 AI에게 쓰기 권한을 주지 않는다.
 - 사용자에게 보여주는 메시지에 비밀값을 넣지 않는다. raw는 저장할 때 마스킹된다.
 - 단계마다 짧게 진행 상황을 알린다: 무엇을 했고, 판정이 무엇이고, 다음이 무엇인지.
 - `$P status`로 언제든 현재 상태를 확인할 수 있다.

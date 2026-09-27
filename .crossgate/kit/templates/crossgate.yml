@@ -1,4 +1,4 @@
-name: pipeline-check
+name: crossgate
 on:
   pull_request:
     branches: [main]
@@ -14,4 +14,4 @@ jobs:
         with:
           python-version: "3.11"
       - name: 병합 위임 조건
-        run: python3 .pipeline/kit/bin/pipeline merge-check --base origin/${{ github.base_ref }}
+        run: python3 .crossgate/kit/bin/crossgate merge-check --base origin/${{ github.base_ref }}

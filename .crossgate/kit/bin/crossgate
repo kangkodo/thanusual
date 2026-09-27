@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""AI 교차검수 파이프라인 CLI. 표준 라이브러리만 사용한다 (Python 3.9+).
+"""Crossgate — AI 교차검수 파이프라인 CLI. 표준 라이브러리만 사용한다 (Python 3.9+).
 
 하위 명령:
   init-run SLUG [--quick]        ai-log 실행 폴더를 만들고 현재 실행으로 지정
@@ -103,9 +103,9 @@ def cmd_verify(a):
 
 
 def config():
-    p = root() / ".pipeline" / "config.json"
+    p = root() / ".crossgate" / "config.json"
     if not p.exists():
-        sys.exit(".pipeline/config.json 이 없습니다. 킷의 install.sh 로 설치하세요.")
+        sys.exit(".crossgate/config.json 이 없습니다. 킷의 install.sh 로 설치하세요.")
     cfg = json.loads(p.read_text(encoding="utf-8"))
     kv = (KIT / "VERSION").read_text().strip() if (KIT / "VERSION").exists() else "?"
     if cfg.get("kit_version") != kv:
@@ -116,9 +116,9 @@ def config():
 def current_run(arg=None):
     if arg:
         return Path(arg).resolve()
-    p = root() / ".pipeline" / "current-run"
+    p = root() / ".crossgate" / "current-run"
     if not p.exists():
-        sys.exit("현재 실행이 없습니다. pipeline init-run 을 먼저 실행하세요.")
+        sys.exit("현재 실행이 없습니다. crossgate init-run 을 먼저 실행하세요.")
     return root() / p.read_text().strip()
 
 
@@ -152,7 +152,7 @@ def escalation(recs, stage, cap):
 
 
 def write_timeline(run):
-    rows = ["# 판정 타임라인", "", "`pipeline verdict`가 자동 생성한다. 직접 수정하지 않는다.", "",
+    rows = ["# 판정 타임라인", "", "`crossgate verdict`가 자동 생성한다. 직접 수정하지 않는다.", "",
             "| 시각 | 단계 | 회차 | 판정 | 주체 | 커밋 | 지적 | 비고 |", "|---|---|---|---|---|---|---|---|"]
     for x in load(run):
         issues = ", ".join(f"{k}:{v}" for k, v in x.get("issues", {}).items())
@@ -176,7 +176,7 @@ def cmd_init_run(a):
     meta = {"slug": slug, "route": "quick" if a.quick else "full",
             "branch": git("rev-parse", "--abbrev-ref", "HEAD"), "created": now.isoformat(timespec="seconds")}
     (run / "meta.json").write_text(json.dumps(meta, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    (r / ".pipeline" / "current-run").write_text(str(run.relative_to(r)))
+    (r / ".crossgate" / "current-run").write_text(str(run.relative_to(r)))
     print(run.relative_to(r))
 
 
@@ -191,7 +191,7 @@ def cmd_codex(a):
     task = Path(a.prompt_file).read_text(encoding="utf-8")
     prompt = "\n\n---\n\n".join([
         (KIT / "roles" / f"{a.role}.md").read_text(encoding="utf-8"),
-        (KIT / "PIPELINE.md").read_text(encoding="utf-8"),
+        (KIT / "CROSSGATE.md").read_text(encoding="utf-8"),
         f"# 이번 작업\n\n실행 기록 폴더: `{run.relative_to(r)}`\n\n{task}"])
     stamp = dt.datetime.now().strftime("%H%M%S")
     out = run / "raw" / f"{stamp}_{a.role}_reply.md"
@@ -266,12 +266,12 @@ def cmd_claude(a):
     cfg, r = config(), root()
     run = current_run(a.run)
     if a.role not in READ_ONLY_ROLES:
-        sys.exit(f"pipeline claude는 검수 역할만 맡는다: {sorted(READ_ONLY_ROLES)}")
+        sys.exit(f"crossgate claude는 검수 역할만 맡는다: {sorted(READ_ONLY_ROLES)}")
     model = cfg.get("claude", {}).get("model", "claude-opus-5-5")
     task = Path(a.prompt_file).read_text(encoding="utf-8")
     prompt = "\n\n---\n\n".join([
         (KIT / "roles" / f"{a.role}.md").read_text(encoding="utf-8"),
-        (KIT / "PIPELINE.md").read_text(encoding="utf-8"),
+        (KIT / "CROSSGATE.md").read_text(encoding="utf-8"),
         f"# 이번 작업\n\n실행 기록 폴더: `{run.relative_to(r)}`\n\n{task}"])
     cmd = ["claude", "-p", "--model", model, "--tools", CLAUDE_TOOLS, "--permission-mode", "dontAsk",
            "--strict-mcp-config", "--no-session-persistence", "--output-format", "json"]
@@ -436,7 +436,7 @@ def cmd_clean_raw(a):
 
 
 def main(argv=None):
-    ap = argparse.ArgumentParser(prog="pipeline", description=__doc__.split("\n")[0])
+    ap = argparse.ArgumentParser(prog="crossgate", description=__doc__.split("\n")[0])
     sp = ap.add_subparsers(dest="cmd", required=True)
     p = sp.add_parser("init-run"); p.add_argument("slug"); p.add_argument("--quick", action="store_true")
     p.set_defaults(fn=cmd_init_run)
