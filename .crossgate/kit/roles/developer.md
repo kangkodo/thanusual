@@ -8,6 +8,6 @@
 
 ## 금지 (어기면 gate가 막는다)
 - TODO 문구 수정
-- 보호 경로 수정: `.pipeline/`, `ai-log/`, 수용 테스트(`config.qa.acceptance`)
+- 보호 경로 수정: `.crossgate/`, `ai-log/`, 수용 테스트(`config.qa.acceptance`)
 - 수용 테스트를 통과시키려고 테스트나 기대값을 바꾸는 것. 테스트가 틀렸다고 판단되면 고치지 말고 답변에 적는다
 - 범위 밖 변경, 가짜 성공(mock으로 통과시키기), 비밀값 출력

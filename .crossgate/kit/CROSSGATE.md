@@ -1,6 +1,6 @@
-# AI 교차검수 파이프라인 규칙
+# Crossgate — AI 교차검수 파이프라인 규칙
 
-> 설계 원본: `ai-crossreview-pipeline-spec` v1.5. 이 파일은 실행용으로 압축한 규칙이다. 규칙을 바꾸려면 명세와 킷을 함께 개정한다.
+> 설계 원본: `crossgate-spec` v1.9. 이 파일은 실행용으로 압축한 규칙이다. 규칙을 바꾸려면 명세와 킷을 함께 개정한다.
 
 ## 1. 단계와 역할
 
@@ -8,13 +8,13 @@
 |---|---|---|---|---|
 | 요청 정리 | `request` | Master(Claude) | 사용자(새 가정이 있을 때만) | APPROVED |
 | 기획 | `plan` | Master(Claude) | Codex `plan-reviewer` (읽기 전용) | APPROVED / REJECTED |
-| 개발 | `dev` | Codex `developer` | Claude `pipeline-reviewer` (읽기 전용) | APPROVED / REJECTED |
+| 개발 | `dev` | Codex `developer` | Claude `crossgate-reviewer` (읽기 전용) | APPROVED / REJECTED |
 | 독립 QA | `qa` | Codex `qa` | Master가 증거 표본 확인 | PASSED / FAILED |
 | Wiki | `wiki` | Master(Claude) | Codex `wiki-reviewer` (읽기 전용) | APPROVED / REJECTED |
 
-- 사용자는 Master하고만 대화한다. Codex는 Master가 `pipeline codex <역할>`로 호출하는 도구다.
+- 사용자는 Master하고만 대화한다. Codex는 Master가 `crossgate codex <역할>`로 호출하는 도구다.
 - 작업 AI와 검수 AI는 항상 다른 모델이다.
-- 검수 AI는 읽기 전용이다. 판정을 Master에게 돌려줄 뿐이고, 기록은 Master가 `pipeline verdict`로 한다.
+- 검수 AI는 읽기 전용이다. 판정을 Master에게 돌려줄 뿐이고, 기록은 Master가 `crossgate verdict`로 한다.
 
 ## 2. 판정 규칙
 
@@ -65,19 +65,19 @@
 ## 6. 버전 고정과 기록
 
 - 승인과 PASSED는 커밋된 상태에서만 기록한다(`ai-log/` 제외). 판정 레코드의 `commit`이 곧 검수한 버전이다.
-- `pipeline verdict`만 `verdicts.jsonl`에 쓰고, `timeline.md`는 자동 생성한다.
-- `pipeline codex`와 `pipeline claude`는 호출마다 토큰·시간(Claude는 비용 포함)을 `usage.jsonl`에 덧붙인다(커밋 대상). 이 파일에 줄이 덧붙는 것은 보호 경로 위반이 아니다.
-- 설치된 킷 복사본(`.pipeline/kit/`)은 `MANIFEST.sha256`으로 봉인된다. `gate`와 `merge-check`는 봉인이 깨지면 실패한다.
+- `crossgate verdict`만 `verdicts.jsonl`에 쓰고, `timeline.md`는 자동 생성한다.
+- `crossgate codex`와 `crossgate claude`는 호출마다 토큰·시간(Claude는 비용 포함)을 `usage.jsonl`에 덧붙인다(커밋 대상). 이 파일에 줄이 덧붙는 것은 보호 경로 위반이 아니다.
+- 설치된 킷 복사본(`.crossgate/kit/`)은 `MANIFEST.sha256`으로 봉인된다. `gate`와 `merge-check`는 봉인이 깨지면 실패한다.
 - 개발 역할이 `todo.md`에서 체크와 "완료 근거" 줄만 바꾼 것은 보호 경로 위반이 아니다. `gate`가 자동 판별한다. 문구가 바뀌면 위반이다.
-- 개발 역할을 부르기 전에 Master가 먼저 커밋한다. 호출 뒤 `pipeline gate --protect-since <그 커밋>`으로 보호 경로 변경을 잡는다.
-- `raw/`와 `03-qa/captures/`는 git에서 제외하고, `pipeline clean-raw`로 기한(기본 30일)이 지나면 지운다. 저장 전 비밀값을 마스킹한다.
+- 개발 역할을 부르기 전에 Master가 먼저 커밋한다. 호출 뒤 `crossgate gate --protect-since <그 커밋>`으로 보호 경로 변경을 잡는다.
+- `raw/`와 `03-qa/captures/`는 git에서 제외하고, `crossgate clean-raw`로 기한(기본 30일)이 지나면 지운다. 저장 전 비밀값을 마스킹한다.
 
 ## 7. 병합 위임 (조건을 전부 만족하면 자동 병합)
 
-`pipeline merge-check`가 판정한다.
+`crossgate merge-check`가 판정한다.
 
 1. 필수 단계의 최종 판정이 모두 승인/PASSED이고, 개발·QA·Wiki 승인이 현재 코드와 같은 버전이다
-2. 고정층 검사(`pipeline gate`)와 기존 CI가 통과했다 (CI 필수 검사)
+2. 고정층 검사(`crossgate gate`)와 기존 CI가 통과했다 (CI 필수 검사)
 3. 금지 경로(`config.forbidden`)를 건드리지 않았다
 4. `ESCALATED` 기록이 없다
 5. 미검증이 남은 승인이 없다
@@ -86,7 +86,7 @@
 
 ## 8. 배포
 
-자동 배포는 없다. 사용자가 지시할 때만 `pipeline deploy`로 미리보기를 보여주고, `--yes`로 실행한다.
+자동 배포는 없다. 사용자가 지시할 때만 `crossgate deploy`로 미리보기를 보여주고, `--yes`로 실행한다.
 
 ## 9. 경로
 

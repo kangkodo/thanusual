@@ -1,5 +1,5 @@
 {
-  "kit_version": "0.1.3",
+  "kit_version": "0.2.0",
   "codex": {
     "model": "gpt-6-astra",
     "default_effort": "high",
@@ -12,7 +12,7 @@
   "gate": [
     { "name": "test", "run": "npm test" }
   ],
-  "protected": [".pipeline/*", "ai-log/*", "tests/acceptance/*"],
+  "protected": [".crossgate/*", "ai-log/*", "tests/acceptance/*"],
   "forbidden": [".github/workflows/*", "package.json", "package-lock.json", "*.env", "*secret*"],
   "doc_paths": ["docs/*", "*.md"],
   "required_stages": ["request", "plan", "dev", "qa", "wiki"],

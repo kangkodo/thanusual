@@ -1,4 +1,4 @@
-# ai-pipeline-kit
-.pipeline/current-run
+# crossgate
+.crossgate/current-run
 ai-log/*/*/raw/
 ai-log/*/*/03-qa/captures/
