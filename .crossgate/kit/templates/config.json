@@ -1,5 +1,5 @@
 {
-  "kit_version": "0.2.2",
+  "kit_version": "",
   "codex": {
     "model": "gpt-6-astra",
     "default_effort": "high",
@@ -16,8 +16,11 @@
   "protected": [".crossgate/*", "ai-log/*", "tests/acceptance/*"],
   "forbidden": [".github/workflows/*", "package.json", "package-lock.json", "*.env", "*secret*"],
   "doc_paths": ["docs/*", "*.md"],
-  "required_stages": ["request", "plan", "dev", "qa", "wiki"],
-  "quick_stages": ["request", "dev", "qa"],
+  "routes": {
+    "light": { "stages": ["request", "dev"], "effort": { "developer": "low", "dev-reviewer": "low" } },
+    "standard": { "stages": ["request", "dev"] },
+    "full": { "stages": ["request", "plan", "dev", "qa", "wiki"] }
+  },
   "qa": { "runner": "codex", "acceptance": "tests/acceptance" },
   "deploy": {
     "preview": "git fetch origin && git log --oneline origin/release..origin/main",
