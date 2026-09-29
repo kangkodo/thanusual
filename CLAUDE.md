@@ -114,7 +114,7 @@ When the user's request matches an available skill, invoke it. When in doubt, in
 <!-- jelly-studio:start -->
 ## jelly-studio 공통 규칙
 
-- 이 서비스는 jelly-studio 목록에 있고 id는 `thanusual`다. 단계는 jelly-studio가 관리한다(확인: jelly-studio에서 `jelly resume thanusual`).
+- 이 서비스는 jelly-studio 목록에 있고 id는 `thanusual`다. 단계는 jelly-studio가 관리한다(확인: jelly-studio 루트에서 `python3 bin/jelly resume thanusual`).
 - 개발은 `/crossgate`로 한다(Claude PM, Codex 구현, Claude 읽기 전용 검수). 작업 등급(가벼움·보통·무거움)은 크로스게이트 규칙대로 Master가 추천하고 사용자가 정한다. 이 문서는 등급 기준을 따로 정하지 않는다.
 - 작업을 마칠 때마다 `docs/인수인계.md`의 세 절(마지막 작업·다음 할 일·열린 문제)을 갱신한다.
 - 숫자 기록은 `docs/숫자-기록.md` 약속을 따른다. PostHog에 개인정보를 보내지 않는다. PostHog를 처음 넣는 개발에서 쿠키 고지를 함께 넣는다(문구 예시는 `docs/숫자-기록.md`).
