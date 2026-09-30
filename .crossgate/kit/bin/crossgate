@@ -35,7 +35,7 @@ VERDICTS = ["READY", "APPROVED", "REJECTED", "BLOCKED", "PASSED", "FAILED", "ESC
 LABEL = {"READY": "READY", "APPROVED": "승인", "REJECTED": "반려", "BLOCKED": "BLOCKED",
          "PASSED": "PASSED", "FAILED": "FAILED", "ESCALATED": "사람 조정 요청"}
 REVIEW = {"APPROVED", "REJECTED", "PASSED", "FAILED", "BLOCKED"}
-READ_ONLY_ROLES = {"plan-reviewer", "wiki-reviewer", "dev-reviewer"}
+READ_ONLY_ROLES = {"request-reviewer", "plan-reviewer", "wiki-reviewer", "dev-reviewer"}
 # 작업 등급. 가벼움은 스타일·문구·배치만, 보통은 설계가 확정된 동작 조정, 무거움은 기능 추가·삭제·계약·데이터(CROSSGATE.md 10장)
 ROUTES = {"light": {"stages": ["request", "dev"], "effort": {"developer": "low", "dev-reviewer": "low"}},
           "standard": {"stages": ["request", "dev"]},
@@ -179,6 +179,11 @@ def reviews(recs, stage):
     return [x for x in recs if x["stage"] == stage and x["verdict"] in REVIEW]
 
 
+def request_approved(run):
+    rv = reviews(load(run), "request")
+    return bool(rv) and rv[-1]["verdict"] == "APPROVED"
+
+
 def open_ids(rec):
     return {k for k, v in rec.get("issues", {}).items() if v != "resolved"}
 
@@ -267,6 +272,8 @@ def cmd_codex(a):
         if dirty:
             sys.exit("ai-log에 커밋하지 않은 변경이 있습니다. 지시 파일까지 커밋한 뒤 부르고, 그 커밋을 gate --protect-since 에 줍니다"
                      "(아니면 gate가 Master의 파일을 보호 경로 위반으로 잡는다).\n" + "\n".join(dirty[:5]))
+    if a.role in ("plan-reviewer", "developer") and not request_approved(run):
+        print("주의: 이 실행에는 요청 단계 승인이 없다. 결정 목록을 한 번에 묻고 승인한 뒤 진행한다(CROSSGATE.md 1장).", file=sys.stderr)
     c = cfg.get("codex", {})
     effort = effort_for(cfg, run, a.role, "codex", a.effort) or "high"
     task = Path(a.prompt_file).read_text(encoding="utf-8")

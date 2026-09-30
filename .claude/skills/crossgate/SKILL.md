@@ -1,6 +1,6 @@
 ---
 name: crossgate
-description: Crossgate(AI 교차검수 개발 파이프라인)의 Master 플레이북. "/crossgate 업그레이드"로 킷을 새 버전으로 올릴 수도 있다. 사용자가 /crossgate 으로 기능 개발·수정을 요청하거나, 이 저장소에 .crossgate/config.json 이 있고 사용자가 "파이프라인으로 진행"이라고 할 때 사용한다. Claude가 Master로서 요청 정리·기획·Wiki를 맡고, Codex에게 개발·기획 검수·QA·Wiki 검수를 맡기며, 모든 판정을 ai-log에 기록하고, 조건을 만족하면 자동 병합한다.
+description: Crossgate(AI 교차검수 개발 파이프라인)의 Master 플레이북. 저장소 하나(정식 모드)와 여러 저장소 작업공간(PM 모드) 모두에서 쓴다. "/crossgate 업그레이드"로 킷을 새 버전으로 올릴 수도 있다. 사용자가 /crossgate 으로 기능 개발·수정을 요청하거나, 이 저장소에 .crossgate/config.json 이 있고 사용자가 "파이프라인으로 진행"이라고 할 때 사용한다. Claude가 Master로서 요청 정리·기획·Wiki를 맡고, Codex에게 개발·기획 검수·QA·Wiki 검수를 맡기며, 모든 판정을 ai-log에 기록하고, 조건을 만족하면 자동 병합한다.
 ---
 
 # /crossgate — Crossgate Master 플레이북
@@ -8,6 +8,11 @@ description: Crossgate(AI 교차검수 개발 파이프라인)의 Master 플레�
 너는 Master다. 사용자와 대화하는 유일한 창구이자 유일한 기록자다. 규칙 원문은 `.crossgate/kit/CROSSGATE.md`이고, 이 문서는 실행 순서다. 먼저 `CROSSGATE.md`와 `.crossgate/config.json`을 읽는다.
 
 `P` = `python3 .crossgate/kit/bin/crossgate`
+
+**PM 모드**(`config.json`의 `mode`가 `"pm"`): 작업공간 규칙(루트 `AGENTS.md`와 그것이 가리키는 문서)을 먼저 읽고, 부딪히면 그것을 따른다. 규칙이 정하지 않은 요청 정리·등급·재검수·읽을 것은 이 플레이북대로 한다. 달라지는 점:
+- 0장 1~2번 대신, 대상 저장소마다 작업 트리가 깨끗한지 확인한다. 브랜치·커밋·병합·배포 방식은 작업공간 규칙을 따른다.
+- `codex`(개발·QA)·`gate`·`verdict`(저장소 판정)에 `--repo <저장소>`를 붙인다. 개발 역할은 실행 기록 폴더를 못 쓰므로 완료 근거를 답변에서 받아 Master가 옮긴다.
+- 6장 병합(merge-check·PR)은 없다. 저장소마다 작업공간 규칙대로 커밋하고, 병합·배포는 규칙과 사용자 지시를 따른다.
 
 ## 0. 시작
 
@@ -26,9 +31,13 @@ description: Crossgate(AI 교차검수 개발 파이프라인)의 Master 플레�
 
 ## 1. 요청 정리 (`request`)
 
-1. 대화를 바탕으로 `00-request/request.md`의 목표·요구·하지 않을 일을 채운다.
-2. `CROSSGATE.md` 1장 "요청 정리: 결정 목록"대로 결정 목록을 만들고 `질문`만 묻는다. 선택지가 있으면 AskUserQuestion(선택지 2~4개, 추천을 첫째에)을 쓰고, 열린 질문은 글로 묻는다.
-3. `질문`이 모두 답을 받았으면 커밋하고 `$P verdict --stage request --verdict APPROVED --actor user --note "<결정 N건 중 질문 M건 / 질문 없음>"`.
+목표는 사용자에게 **한 번에** 묻고, 승인 뒤에는 묻지 않는 것이다(`CROSSGATE.md` 1장 "요청 정리: 결정 목록").
+
+1. 관련 코드·문서를 먼저 조사한다. 대화를 바탕으로 `00-request/request.md`의 목표·요구·하지 않을 일을 채우고, 1장 2~3번대로 결정 목록을 만든다.
+2. 보통·무거움: `request.md`를 커밋하고 요청 검수 지시 파일(`00-request/review-request-N.md`, 읽을 것: request.md와 관련 코드·문서 경로)을 써서 `$P codex request-reviewer --prompt-file <그 파일>`. 판정을 `$P verdict --stage request --verdict APPROVED|REJECTED --actor codex --issues "I-1=open,..."`로 기록하고, 찾은 결정을 목록에 합친다. 가벼움은 건너뛴다.
+3. `질문` 전부와 허락이 필요한 행동을 **한 묶음으로** 묻는다. 선택지가 있으면 AskUserQuestion(질문 4개·선택지 2~4개까지, 추천을 첫째에)을 쓰고 넘치면 여러 번에 나눠 이어서 묻는다. 열린 질문은 글로 묻는다. 중간에 작업을 시작하지 않는다.
+4. 답을 결정 목록·허락 범위·사용자 확인 기록에 적고 커밋한 뒤 `$P verdict --stage request --verdict APPROVED --actor user --note "<결정 N건 중 질문 M건 / 질문 없음>"`.
+5. 이후 사용자에게 묻는 것은 1장 7번의 세 경우뿐이다. 나머지 판단은 결정 목록의 기준으로 정하고 판정 비고에 남긴다.
 
 ## 2. 기획 (`plan`) — Claude 작성, Codex 검수
 
@@ -38,7 +47,7 @@ description: Crossgate(AI 교차검수 개발 파이프라인)의 Master 플레�
 2. `$P verdict --stage plan --verdict READY --actor claude`.
 3. 검수 요청 파일(`01-planning/review-request-N.md`)에 대상 파일 목록을 적는다. 재검수면 이전 지적(ID·위치·기대)과 바뀐 항목(DEV ID·절)만 추려 적는다(CROSSGATE.md R14). 그다음 `$P codex plan-reviewer --prompt-file <그 파일>`.
 4. 응답 첫 줄을 파싱해 기록한다: `$P verdict --stage plan --verdict APPROVED|REJECTED|BLOCKED --actor codex --model gpt-6-astra --issues "P-1=open,..." [--unverified ...] --note "<요약>"`.
-5. 반려면 지적을 반영하고 2로 돌아간다. 요구 오류나 결정 근거(⑥) 지적은 Master가 기본값으로 메우지 않는다. CROSSGATE.md 1장 요청 정리 3번 방식으로 사용자에게 묻고 답을 request.md에 적은 뒤 기획을 고친다. `verdict` 출력에 "조정 필요"가 나오면 7번으로 간다.
+5. 반려면 지적을 반영하고 2로 돌아간다. 요구 오류나 결정 근거(⑥) 지적은 Master가 기본값으로 메우지 않는다. CROSSGATE.md 1장 요청 정리 5번 방식으로 사용자에게 묻고 답을 request.md에 적은 뒤 기획을 고친다. `verdict` 출력에 "조정 필요"가 나오면 7번으로 간다.
 
 ## 3. 개발 (`dev`) — Codex 작성, Claude 검수
 
