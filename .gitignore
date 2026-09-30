@@ -16,3 +16,4 @@ node_modules/
 ai-log/*/*/raw/
 ai-log/*/*/03-qa/captures/
 .crossgate/local.json
+.obsidian/
