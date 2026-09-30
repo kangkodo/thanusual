@@ -3,7 +3,7 @@
   "codex": {
     "model": "gpt-6-astra",
     "default_effort": "high",
-    "effort": { "plan-reviewer": "xhigh", "wiki-reviewer": "high", "developer": "high", "qa": "high" },
+    "effort": { "request-reviewer": "high", "plan-reviewer": "xhigh", "wiki-reviewer": "high", "developer": "high", "qa": "high" },
     "network": false,
     "ephemeral": false
   },
