@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>평소보다 — thanusual</title>
+  <meta name="description" content="지금, 평소보다 붐비는 곳. 서울 121곳을 한 줄로 비교합니다.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+KR:wght@400;500;700&family=Noto+Serif+KR:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <header class="mast">
+    <p class="eyebrow">thanusual</p>
+    <h1>평소보다</h1>
+    <p class="lede">지금 121곳을 한눈에. 평소 대비 %는 같은 요일·시간이 3주 모이면 붙습니다.</p>
+    <p class="stamp" id="stamp">데이터를 불러오는 중</p>
+  </header>
+
+  <p class="banner" id="banner" hidden></p>
+
+  <nav class="tabs" id="tabs" aria-label="장소 분류"></nav>
+
+  <ol class="board" id="board"></ol>
+
+  <footer>
+    <p>인구는 서울 열린데이터광장 실시간 도시데이터. 브라우저에 인증키를 두지 않습니다.</p>
+    <p><a href="https://github.com/kangkodo/thanusual">소스</a></p>
+  </footer>
+  <script src="./app.js"></script>
+</body>
+</html>
