@@ -19,7 +19,7 @@ description: Crossgate(AI 교차검수 개발 파이프라인)의 Master 플레�
 1. 작업 트리가 깨끗한지 확인한다(`git status`). 사용자 변경이 있으면 건드리지 말고 먼저 묻는다.
 2. 기준 브랜치에서 작업 브랜치를 만든다: `git switch -c pipe/<slug>`.
 3. 작업 등급을 정한다(CROSSGATE.md 10장). 근거 한 줄과 함께 추천하고 사용자가 확정한다. AskUserQuestion을 쓰면 추천 등급을 첫째에 둔다. 사용자가 이미 등급을 말했으면 다시 묻지 않는다.
-4. `$P init-run <slug> --route light|standard|full`. 출력된 폴더가 이번 실행 기록이다. 역할 호출의 추론 강도는 이 등급에서 정해진다. 다른 세션과 섞이지 않게 이후 모든 `$P` 명령에 `--run <그 폴더>`를 붙인다(`gate`·`merge-check` 제외). `init-run`이 "주의: 현재 실행"을 출력하면 다른 세션이 크게를 쓰는 중일 수 있다.
+4. `$P init-run <slug> --route light|standard|full`. 출력된 폴더가 이번 실행 기록이다. 역할 호출의 추론 강도는 이 등급에서 정해진다. 다른 세션과 섞이지 않게 이후 모든 `$P` 명령에 `--run <그 폴더>`를 붙인다(`gate`·`merge-check` 제외). `init-run`이 "주의: 현재 실행"을 출력하면 다른 세션이 크로스게이트를 쓰는 중일 수 있다.
 
 | 등급 | 거치는 절 |
 |---|---|
@@ -88,7 +88,7 @@ description: Crossgate(AI 교차검수 개발 파이프라인)의 Master 플레�
 
 ## 8. 업그레이드 (`/crossgate 업그레이드`)
 
-사용자가 크게를 새 버전으로 올려 달라고 하면 개발 작업 대신 이 절차를 따른다.
+사용자가 크로스게이트를 새 버전으로 올려 달라고 하면 개발 작업 대신 이 절차를 따른다.
 
 1. 설치된 버전은 `.crossgate/kit/VERSION`, 원본 위치는 `.crossgate/local.json`의 `kit_source`(이 컴퓨터 전용, git 제외)다. 그 폴더가 없으면 `kit_remote`를 임시 폴더에 clone해서 쓴다. `local.json`이 없으면(다른 컴퓨터에서 받은 저장소) 사용자에게 원본 위치를 묻는다.
 2. 원본에 원격이 있으면 `git -C <원본> fetch -q --tags` 후, 최신 태그를 `git -C <원본> tag --sort=-v:refname | head -1`로 찾는다.
