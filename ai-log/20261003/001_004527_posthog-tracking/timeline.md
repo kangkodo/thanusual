@@ -11,3 +11,5 @@
 | 10-03 01:08 | dev | 1 | READY | codex gpt-6-astra | c6fc824 |  | gate-1 통과(수용 22, npm test) |
 | 10-03 01:09 | dev | 1 | 승인 | claude claude-opus-5-5 | 5d955fd |  | 차단 지적 없음. 권고 3건: app.js import 사이 빈 줄(모양), trimUrls 순환 참조 가드(지금은 불필요), 320x568 폰 footer는 QA-6에서 확인 |
 | 10-03 01:19 | qa | 1 | PASSED | codex gpt-6-astra | 7b8c620 |  | AC-1~11, QA-1~8 통과(Codex). Master 표본 확인: QA-2·QA-3 대기열 덤프, QA-5·QA-6 캡처(375·320 폰, 데스크톱). S-1~S-5는 Master가 실제 SDK로 확인(전송 가로챔), sdk-check.md |
+| 10-03 01:21 | wiki | 1 | READY | claude | 5f4e438 |  |  |
+| 10-03 01:23 | wiki | 1 | 반려 | codex gpt-6-astra | 5f4e438 | W-1:open | 인수인계 '마지막 작업'이 병합 전인데 main에 들어갔다고 적음. 권고: CLAUDE.md Deploy Configuration의 기존 모순은 별도 정리 |
