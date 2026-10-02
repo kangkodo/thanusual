@@ -2,8 +2,8 @@
   "kit_version": "",
   "codex": {
     "model": "gpt-6-astra",
-    "default_effort": "high",
-    "effort": { "request-reviewer": "high", "plan-reviewer": "xhigh", "wiki-reviewer": "high", "developer": "high", "qa": "high" },
+    "default_effort": "medium",
+    "effort": { "request-reviewer": "medium", "plan-reviewer": "medium", "developer": "medium", "qa": "medium", "wiki-reviewer": "low" },
     "network": false,
     "ephemeral": false
   },
