@@ -79,19 +79,26 @@ posthog.init("phc_mQeQSaqnyCxjKEhcmXyqES8kyFge6tQDm7cUdTe8MkHu", {
 
 ## TODO
 
-- [ ] DEV-001 저장소 루트에 `analytics.js`를 만든다. 일반 스크립트다(`import`/`export` 없음, 전역 `window`·`document`·`location`·`navigator`만 쓴다). "PostHog를 불러오는 조건"을 통과하면 PostHog 공식 로더(아래 "공식 로더")를 고치지 않고 그대로 실행하고, "초기화 설정"대로 `posthog.init`을 한 번 부른다. 공개 키는 이 파일에 문자열로 한 번만 적는다. "주소 자르기"를 `before_send`로 건다.
+- [x] DEV-001 저장소 루트에 `analytics.js`를 만든다. 일반 스크립트다(`import`/`export` 없음, 전역 `window`·`document`·`location`·`navigator`만 쓴다). "PostHog를 불러오는 조건"을 통과하면 PostHog 공식 로더(아래 "공식 로더")를 고치지 않고 그대로 실행하고, "초기화 설정"대로 `posthog.init`을 한 번 부른다. 공개 키는 이 파일에 문자열로 한 번만 적는다. "주소 자르기"를 `before_send`로 건다.
+  완료 근거: analytics.js · 조건부 공식 로더, 초기화 설정, service 등록, 중첩 주소 자르기
   확인 방법: AC-1~AC-9
-- [ ] DEV-002 `index.html`과 `404.html`에서 `analytics.js`를 불러온다. `index.html`은 `<script defer src="./analytics.js"></script>`를 Leaflet 스크립트 앞에, `404.html`은 `<script defer src="/analytics.js"></script>`를 `</body>` 앞에 둔다(404는 어떤 깊이의 주소에서도 뜨므로 절대 경로).
+- [x] DEV-002 `index.html`과 `404.html`에서 `analytics.js`를 불러온다. `index.html`은 `<script defer src="./analytics.js"></script>`를 Leaflet 스크립트 앞에, `404.html`은 `<script defer src="/analytics.js"></script>`를 `</body>` 앞에 둔다(404는 어떤 깊이의 주소에서도 뜨므로 절대 경로).
+  완료 근거: index.html, 404.html · defer 로더 태그와 404 절대 경로
   확인 방법: AC-11, QA-1, QA-2, QA-7
-- [ ] DEV-003 `lib/track.js`를 만든다. `export function trackPlaceOpen(prev, next, posthog = globalThis.posthog)`: `next`가 비어 있지 않고 `prev`와 다를 때만 `posthog.capture("core_action", { action: "place_open" })`를 한 번 부른다. `posthog`가 없으면 아무 일도 하지 않는다.
+- [x] DEV-003 `lib/track.js`를 만든다. `export function trackPlaceOpen(prev, next, posthog = globalThis.posthog)`: `next`가 비어 있지 않고 `prev`와 다를 때만 `posthog.capture("core_action", { action: "place_open" })`를 한 번 부른다. `posthog`가 없으면 아무 일도 하지 않는다.
+  완료 근거: lib/track.js · 다른 장소를 열 때만 core_action 기록, SDK 부재 시 생략
   확인 방법: AC-10
-- [ ] DEV-004 "`place_open`" 표대로 `trackPlaceOpen`을 건다. 대상은 배경 사실의 `select(` 호출 네 곳 중 사용자가 장소를 고르는 세 곳(목록 행, 「가까운 다른 장소」, 지도 선택)이다. `prev`는 그 행동 직전의 `state.selected`여야 한다. 지도 선택은 `map.js` `pick`이 콜백보다 먼저 `state.selected`를 덮어쓰므로, 덮어쓰기 전 값을 쓸 수 있게 고친다(권장, 강제 아님: `pick`이 고른 이름을 콜백 인자로 넘기고 `select` 안에서 `state.selected`를 바꾸기 전에 `trackPlaceOpen(state.selected, name)`을 부른다). `readHash`와 `load`, `hashchange` 경로에는 걸지 않는다. 지도 선택 뒤의 기존 동작(선택 표시, 목록 행으로 스크롤·포커스, 지도는 다시 가운데로 옮기지 않음)은 그대로다.
+- [x] DEV-004 "`place_open`" 표대로 `trackPlaceOpen`을 건다. 대상은 배경 사실의 `select(` 호출 네 곳 중 사용자가 장소를 고르는 세 곳(목록 행, 「가까운 다른 장소」, 지도 선택)이다. `prev`는 그 행동 직전의 `state.selected`여야 한다. 지도 선택은 `map.js` `pick`이 콜백보다 먼저 `state.selected`를 덮어쓰므로, 덮어쓰기 전 값을 쓸 수 있게 고친다(권장, 강제 아님: `pick`이 고른 이름을 콜백 인자로 넘기고 `select` 안에서 `state.selected`를 바꾸기 전에 `trackPlaceOpen(state.selected, name)`을 부른다). `readHash`와 `load`, `hashchange` 경로에는 걸지 않는다. 지도 선택 뒤의 기존 동작(선택 표시, 목록 행으로 스크롤·포커스, 지도는 다시 가운데로 옮기지 않음)은 그대로다.
+  완료 근거: app.js, map.js · select 변경 전 기록, 지도 콜백에 장소 이름 전달, 복원 경로 유지
   확인 방법: QA-2, QA-3, QA-4, QA-8
-- [ ] DEV-005 `index.html`의 `<details class="sources">`에 "쿠키 고지와 footer"대로 제목을 바꾸고 고지 문단을 넣는다.
+- [x] DEV-005 `index.html`의 `<details class="sources">`에 "쿠키 고지와 footer"대로 제목을 바꾸고 고지 문단을 넣는다.
+  완료 근거: index.html · 기존 출처 유지, 안내 제목 변경과 쿠키 고지 문단 추가
   확인 방법: AC-11, QA-5
-- [ ] DEV-006 `styles.css` 폰 미디어 블록에서 "쿠키 고지와 footer"의 폰 계약대로 footer를 보이게 한다.
+- [x] DEV-006 `styles.css` 폰 미디어 블록에서 "쿠키 고지와 footer"의 폰 계약대로 footer를 보이게 한다.
+  완료 근거: styles.css · 펼친 폰 시트의 footer 표시, 높이 제한과 내부 스크롤
   확인 방법: QA-5, QA-6
-- [ ] DEV-007 `npm test`와 `node --test tests/acceptance/*.test.js`가 통과한다. 금지 경로(`.crossgate/config.json`의 `forbidden`)와 보호 경로를 건드리지 않는다. 새 의존성을 추가하지 않는다.
+- [x] DEV-007 `npm test`와 `node --test tests/acceptance/*.test.js`가 통과한다. 금지 경로(`.crossgate/config.json`의 `forbidden`)와 보호 경로를 건드리지 않는다. 새 의존성을 추가하지 않는다.
+  완료 근거: node --test tests/acceptance/*.test.js 22개, npm test JS 42개·Python 10개 통과 · 변경 경로 및 공식 로더 원문 대조 완료
   확인 방법: gate
 
 ### 공식 로더 (PostHog 문서의 HTML 스니펫, 2026-10-03 확인. 그대로 쓴다)

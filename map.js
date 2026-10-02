@@ -288,11 +288,7 @@ function drawOverlays() {
       } else {
         layer = window.L.circleMarker([place.lat, place.lng], circleStyle(place, peersByLevel.get(place.level), selected, referenceMax));
       }
-      const pick = () => {
-        state.selected = place.name;
-        state.focus = true;
-        onPick?.();
-      };
+      const pick = () => onPick?.(place.name);
       layer.on("click", pick);
       if (layer.getRadius && layer.getRadius() < TAP_RADIUS) {
         const hit = window.L.circleMarker([place.lat, place.lng], { radius: TAP_RADIUS, stroke: false, fillOpacity: 0 });
