@@ -10,3 +10,4 @@
 | 10-03 01:02 | plan | 1 | 승인 | codex gpt-6-astra | 6e94b55 |  | 차단 지적 없음. 권고 1건(QA-8 시간 모드 수를 다섯으로 명시)은 개발 지시 커밋에서 반영 |
 | 10-03 01:08 | dev | 1 | READY | codex gpt-6-astra | c6fc824 |  | gate-1 통과(수용 22, npm test) |
 | 10-03 01:09 | dev | 1 | 승인 | claude claude-opus-5-5 | 5d955fd |  | 차단 지적 없음. 권고 3건: app.js import 사이 빈 줄(모양), trimUrls 순환 참조 가드(지금은 불필요), 320x568 폰 footer는 QA-6에서 확인 |
+| 10-03 01:19 | qa | 1 | PASSED | codex gpt-6-astra | 7b8c620 |  | AC-1~11, QA-1~8 통과(Codex). Master 표본 확인: QA-2·QA-3 대기열 덤프, QA-5·QA-6 캡처(375·320 폰, 데스크톱). S-1~S-5는 Master가 실제 SDK로 확인(전송 가로챔), sdk-check.md |
