@@ -13,3 +13,5 @@
 | 10-03 01:19 | qa | 1 | PASSED | codex gpt-6-astra | 7b8c620 |  | AC-1~11, QA-1~8 통과(Codex). Master 표본 확인: QA-2·QA-3 대기열 덤프, QA-5·QA-6 캡처(375·320 폰, 데스크톱). S-1~S-5는 Master가 실제 SDK로 확인(전송 가로챔), sdk-check.md |
 | 10-03 01:21 | wiki | 1 | READY | claude | 5f4e438 |  |  |
 | 10-03 01:23 | wiki | 1 | 반려 | codex gpt-6-astra | 5f4e438 | W-1:open | 인수인계 '마지막 작업'이 병합 전인데 main에 들어갔다고 적음. 권고: CLAUDE.md Deploy Configuration의 기존 모순은 별도 정리 |
+| 10-03 01:23 | wiki | 2 | READY | claude | ed6c611 |  |  |
+| 10-03 01:24 | wiki | 2 | 승인 | codex gpt-6-astra | ed6c611 | W-1:resolved | W-1 해결. 권고(기존 Deploy Configuration 모순)는 범위 밖, 별도 작업으로 넘김 |
