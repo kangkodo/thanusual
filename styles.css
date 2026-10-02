@@ -441,6 +441,12 @@ main {
   }
   .sheet-stamp { font-variant-numeric: tabular-nums; }
   .masthead, .foot { display: none; }
+  body.map-sheet-open .foot {
+    display: block;
+    max-height: 30%;
+    overflow: auto;
+    overflow-wrap: anywhere;
+  }
   .tabs button { padding: var(--space-2); }
 }
 .map-status {

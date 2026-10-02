@@ -49,7 +49,7 @@
         </div>
       </main>
       <footer class="foot">
-        <details class="sources"><summary>데이터 출처와 한계</summary><p><a href="https://data.seoul.go.kr/dataVisual/seoul/guide.do">서울시 · KT/SKT 인구 추정</a> · <a href="https://data.seoul.go.kr/dataList/OA-22784/S/1/datasetView.do">서울시 250m 내국인 생활인구(공공누리 1유형)</a> · <a href="https://sgis.kostat.go.kr/">SGIS 행정동 경계</a> · CARTO/OSM 지도. 장소 점은 구역 대표 위치이며 골목별 밀집도가 아닙니다. 250m 칸은 서울시 격자 경계입니다. 과거는 자체 수집분, 예측은 서울시 제공값입니다.</p><a href="https://github.com/kangkodo/thanusual">소스</a></details>
+        <details class="sources"><summary>데이터 출처와 한계 · 쿠키 안내</summary><p><a href="https://data.seoul.go.kr/dataVisual/seoul/guide.do">서울시 · KT/SKT 인구 추정</a> · <a href="https://data.seoul.go.kr/dataList/OA-22784/S/1/datasetView.do">서울시 250m 내국인 생활인구(공공누리 1유형)</a> · <a href="https://sgis.kostat.go.kr/">SGIS 행정동 경계</a> · CARTO/OSM 지도. 장소 점은 구역 대표 위치이며 골목별 밀집도가 아닙니다. 250m 칸은 서울시 격자 경계입니다. 과거는 자체 수집분, 예측은 서울시 제공값입니다.</p><p>이 서비스는 이용 통계를 위해 쿠키를 사용합니다. 모으는 것은 익명 이용 기록뿐이며, 이메일·이름·전화번호·입력 내용 같은 개인정보는 모으지 않습니다. 통계 도구는 PostHog(해외 서버)입니다. 원하지 않으면 브라우저 설정에서 쿠키를 차단할 수 있습니다.</p><a href="https://github.com/kangkodo/thanusual">소스</a></details>
       </footer>
     </div>
     <div class="map-shell">
@@ -68,6 +68,7 @@
       <div id="map" tabindex="-1"></div>
     </div>
   </div>
+  <script defer src="./analytics.js"></script>
   <script defer src="./vendor/leaflet/leaflet.js"></script>
   <script type="module" src="./app.js"></script>
 </body>

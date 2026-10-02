@@ -6,6 +6,8 @@ First screen is a ranked list in a side panel (phone: bottom sheet). The map is 
 
 Pinned places (`lib/pins.js`): ☆ beside each row and in the place detail pins a place. Pins live only in this browser (`localStorage` key `thanusual.pins.v1`); when storage is blocked they live only in the page's memory and are gone after a reload. The 「고정한 장소」 section sits above the board and ignores the category tab and search. Membership comes from the latest `state.data`; values and order come from the same time-mode snapshot as the board, and pinned places without a value there show as 「이 시각 자료 없음」 rows after the rest, in name order. The ranked board below is unchanged: pinned places keep their rank there. Missing data or a time-mode change never removes a pin; only the user unpins.
 
+Usage stats (`analytics.js`, `lib/track.js`): PostHog, one project shared by every jelly-studio service, so every event carries `service=thanusual`. Only three events leave: `$pageview` (once per load), `core_action` with `action=place_open` (the user moves to a different place from a list row, the map, or 「가까운 다른 장소」; a place restored from `#p=`, a refresh, or picking the place that is already open does not count), and `$exception`. Everything else PostHog collects on its own is switched off, and `before_send` cuts `?` and `#` off every URL value, so queries, place names and search text never leave. PostHog is not loaded on `localhost`, `127.0.0.1` or `[::1]`, when cookies are blocked, or when the key is empty; `*.localhost` does load it and sends for real. The cookie notice sits in the footer details (「데이터 출처와 한계 · 쿠키 안내」); on the phone the footer shows only while the sheet is open, and `404.html` has no notice. No new events, properties, `identify`, or PostHog `defaults` date without a new user decision. The decisions, how to verify numbers after a deploy, and the pre-deploy account checks are in `docs/숫자-기록.md`.
+
 ## Product locks
 
 - 121 places, not 140, for the **지금** layer. Official `citydata_ppltn` only. Do not use unofficial `/SeoulRtd/api/ppltn`.
@@ -37,7 +39,7 @@ Time exploration: `timeline.json` persists the last 48 hours independently of gi
 ## Design
 
 - Reference: `../vercel-design.md` (Vercel brand guideline) for judgment only: Geist type, monochrome, spacing tokens, no cards, evidence-first first screen, light/dark without a switcher. Do **not** add the Vercel wordmark, triangle, or `vercel-brand.css`; this is not a Vercel-authored page.
-- Fonts: Geist Sans vendored in `vendor/geist/` (OFL); Geist Mono is vendored but unused (tabular numerals cover the digits). Hangul falls back to the system gothic stack. No Google Fonts or other CDN assets.
+- Fonts: Geist Sans vendored in `vendor/geist/` (OFL); Geist Mono is vendored but unused (tabular numerals cover the digits). Hangul falls back to the system gothic stack. No Google Fonts or other CDN assets; the PostHog loader in `analytics.js` is the one external script.
 - Tokens live in `styles.css` `:root` (`--surface`, `--text`, `--border*`, `--hot`, `--calm`, `--space-*`, `--type-*`). Page CSS uses tokens, never raw hex. Map circle colors come from those tokens via `STYLE[level].token` in `map-radius.js`, resolved at draw time in `map.js`.
 - Copy: sentence case, no em dashes in prose, no eyebrows or pills. Level color (`--hot`) is always paired with the level text.
 - Icons live in `icons/` (`icon.svg` source plus rendered `icon-512.png` and `apple-touch-icon.png`, re-render with `qlmanage -t -s 512` then `sips -z 180 180`); the manifest is `manifest.webmanifest` at the root. Head links to all three.
@@ -110,3 +112,15 @@ When the user's request matches an available skill, invoke it. When in doubt, in
 - 개발 역할은 `.crossgate/`, `ai-log/`, 수용 테스트를 수정하지 않는다.
 - 이 저장소의 기존 작업 절차와 겹치면, `/crossgate`으로 시작한 작업만 이 파이프라인 절차를 따른다. 그 밖의 작업은 기존 절차를 그대로 따른다.
 <!-- crossgate:end -->
+
+<!-- jelly-studio:start -->
+## jelly-studio 공통 규칙
+
+- 이 서비스는 jelly-studio 목록에 있고 id는 `thanusual`다. 단계는 jelly-studio가 관리한다(확인: jelly-studio 루트에서 `python3 bin/jelly resume thanusual`).
+- 개발은 `/crossgate`로 한다(Claude PM, Codex 구현, Claude 읽기 전용 검수). 작업 등급(가벼움·보통·무거움)은 크로스게이트 규칙대로 Master가 추천하고 사용자가 정한다. 이 문서는 등급 기준을 따로 정하지 않는다.
+- 작업을 마칠 때마다 `docs/인수인계.md`의 세 절(마지막 작업·다음 할 일·열린 문제)을 갱신한다.
+- 숫자 기록은 `docs/숫자-기록.md` 약속을 따른다. PostHog에 개인정보를 보내지 않는다. PostHog를 처음 넣는 개발에서 쿠키 고지를 함께 넣는다(문구 예시는 `docs/숫자-기록.md`).
+- AI를 부르는 서비스는 호출마다 `ai_cost`를 서버에서 기록하고, 서비스 전용 AI 키를 쓴다. AI 기능을 처음 배포하기 전에, 그 키에 업체 쪽 월 한도가 걸려 있는지 사용자에게 확인받는다. 확인 전에는 배포를 제안하지 않는다.
+- 배포와 push는 사용자가 지시할 때만 한다.
+- 단계가 `maintenance`이면 새 기능 요청을 받았을 때 먼저 단계를 바꿀지 사용자에게 묻는다. `paused`·`closing`·`retired`이면 개발하지 않는다.
+<!-- jelly-studio:end -->

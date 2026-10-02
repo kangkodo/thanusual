@@ -4,6 +4,8 @@ import { DONG_GEO_URL, LAYERS, daysAgo, kstDate, kstHour, layerUrls, livingSlice
 import { mapSnapshot, timeOptions, distanceKm, hasCoords } from "./shared.js";
 import { pinnedRows, readPins, togglePin, writePins } from "./lib/pins.js";
 
+import { trackPlaceOpen } from "./lib/track.js";
+
 let pinStorage;
 try { pinStorage = window.localStorage; } catch { /* Pins still work in this tab. */ }
 state.pins = readPins(pinStorage);
@@ -156,6 +158,7 @@ function bindSheet() {
 
 // Selection lives in the hash so a place can be shared: /#p=이태원역
 function select(name, focus) {
+  trackPlaceOpen(state.selected, name);
   state.selected = name;
   state.focus = focus;
   try {
@@ -405,8 +408,8 @@ function selectedRow() {
   return state.selected ? $("board").querySelector(`[data-name="${CSS.escape(state.selected)}"]`) : null;
 }
 
-setMapPickHandler(() => {
-  select(state.selected, false);
+setMapPickHandler((name) => {
+  select(name, false);
   render();
   const row = selectedRow();
   if (!row) return;
