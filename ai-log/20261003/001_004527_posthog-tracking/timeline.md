@@ -8,3 +8,4 @@
 | 10-03 00:54 | request | 1 | 승인 | user | 3ded3b1 | I-1:resolved, I-2:resolved, I-3:resolved, I-4:resolved, I-5:resolved | 결정 29건 중 질문 12건(요청 검수 I-1~I-5 포함), 모두 추천안으로 답함 |
 | 10-03 01:01 | plan | 1 | READY | claude | 6e94b55 |  |  |
 | 10-03 01:02 | plan | 1 | 승인 | codex gpt-6-astra | 6e94b55 |  | 차단 지적 없음. 권고 1건(QA-8 시간 모드 수를 다섯으로 명시)은 개발 지시 커밋에서 반영 |
+| 10-03 01:08 | dev | 1 | READY | codex gpt-6-astra | c6fc824 |  | gate-1 통과(수용 22, npm test) |
