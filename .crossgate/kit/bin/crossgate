@@ -275,7 +275,7 @@ def cmd_codex(a):
     if a.role in ("plan-reviewer", "developer") and not request_approved(run):
         print("주의: 이 실행에는 요청 단계 승인이 없다. 결정 목록을 한 번에 묻고 승인한 뒤 진행한다(CROSSGATE.md 1장).", file=sys.stderr)
     c = cfg.get("codex", {})
-    effort = effort_for(cfg, run, a.role, "codex", a.effort) or "high"
+    effort = effort_for(cfg, run, a.role, "codex", a.effort) or "medium"
     task = Path(a.prompt_file).read_text(encoding="utf-8")
     prompt = "\n\n---\n\n".join([
         (KIT / "roles" / f"{a.role}.md").read_text(encoding="utf-8"),
