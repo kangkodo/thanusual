@@ -1,6 +1,7 @@
 # crossgate
 .crossgate/current-run
 .crossgate/local.json
+.crossgate/worktrees/
 .obsidian/
 ai-log/*/*/raw/
 ai-log/*/*/03-qa/captures/
