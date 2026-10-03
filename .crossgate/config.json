@@ -1,5 +1,5 @@
 {
-  "kit_version": "0.6.2",
+  "kit_version": "0.7.0",
   "codex": {
     "model": "gpt-6-astra",
     "default_effort": "medium",
