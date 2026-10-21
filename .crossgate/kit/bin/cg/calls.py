@@ -33,7 +33,7 @@ def sum_usage(jsonl):
     return total
 
 
-def resolve_effort(cfg, run, role, engine, override=None):
+def resolve_effort(cfg, run, role, engine, override=None, override_source="flag"):
     """강도와 출처를 함께 정하고 등급보다 낮춘 명시값을 알린다."""
     route = json.loads((run / "meta.json").read_text(encoding="utf-8")).get("route", "full")
     route = "standard" if route == "quick" else route
@@ -46,10 +46,10 @@ def resolve_effort(cfg, run, role, engine, override=None):
     if not value:
         value, source = ("medium" if engine == "codex" else None), "default"
     if override:
-        if route in ("standard", "full") and override in EFFORTS and value in EFFORTS:
+        if override_source == "flag" and route in ("standard", "full") and override in EFFORTS and value in EFFORTS:
             if EFFORTS.index(override) < EFFORTS.index(value):
                 print(f"경고: --effort {override}는 {route} 등급·설정의 강도 {value}보다 낮습니다.", file=sys.stderr)
-        return override, "flag"
+        return override, override_source
     return value, source
 
 
@@ -143,9 +143,13 @@ def validate_codex(cfg, r, run, role, repo):
         print("주의: 이 실행에는 요청 단계 승인이 없다. 결정 목록을 한 번에 묻고 승인한 뒤 진행한다(CROSSGATE.md 1장).", file=sys.stderr)
 
 
-def invoke(engine, role, task, *, run=None, repo=None, workdir=None, effort=None, extra_guidance="", fresh=False):
+def invoke(engine, role, task, *, run=None, repo=None, workdir=None, effort=None, extra_guidance="", fresh=False,
+           model=None, session_key=None, discussion=None, participant=None, round_number=None,
+           fresh_guidance="", effort_source=None):
     """공용 호출. run은 실행 이름 또는 Path, repo는 설정의 저장소 이름이다.
 
+    model은 모델 덮어쓰기, session_key는 토의 세션 묶음이다. 묶음이 있는 호출은
+    검수 이어 쓰기 설정과 별개로 세션을 보존한다. fresh_guidance는 새 세션에만 넣는다.
     workdir는 Codex의 실제 작업 폴더다. Claude는 설치 위치에서 검수한다.
     state, reply, session, usage, record(끝 기록), exit, stderr를 돌려준다.
     이어 쓰기 대체와 멈춤 재시도도 실제 호출마다 독립된 시작·끝 기록과 원문을 남긴다.
@@ -160,20 +164,23 @@ def invoke(engine, role, task, *, run=None, repo=None, workdir=None, effort=None
     elif role not in READ_ONLY_ROLES:
         sys.exit(f"크로스게이트 claude는 검수 역할만 맡는다: {sorted(READ_ONLY_ROLES)}")
     sandbox = "read-only" if role in READ_ONLY_ROLES else "workspace-write"
-    effort, source = resolve_effort(cfg, run, role, engine, effort)
+    effort, source = resolve_effort(cfg, run, role, engine, effort, effort_source or "flag")
     c = cfg.get(engine, {})
-    model = c.get("model", "gpt-6-astra" if engine == "codex" else "claude-opus-5-5")
+    model = model or c.get("model", "gpt-6-astra" if engine == "codex" else "claude-opus-5-5")
     prompt = build_prompt(role, run, task, target, engine == "codex" and sandbox == "workspace-write")
     if workdir is not None and engine == "codex":
         prompt += f"\n\n이번 호출의 실제 작업 폴더: `{Path(workdir).resolve()}`. 작업은 이 폴더에서 진행한다."
     if extra_guidance:
         prompt += "\n\n" + extra_guidance
+    if fresh_guidance:
+        prompt += "\n\n" + fresh_guidance
     resume_prompt = task + ("\n\n" + extra_guidance if extra_guidance else "")
     resume_session = None
-    if role in READ_ONLY_ROLES and not fresh and cfg.get("resume_reviews", True) \
-            and not (engine == "codex" and c.get("ephemeral")):
+    if role in READ_ONLY_ROLES and not fresh and (session_key or cfg.get("resume_reviews", True)) \
+            and (session_key or not (engine == "codex" and c.get("ephemeral"))):
         resume_session = next((rec["session"] for rec in reversed(read_usage(run))
                                if rec.get("engine") == engine and rec.get("role") == role
+                               and rec.get("session_key") == session_key
                                and rec.get("repo") == repo and rec.get("state") == "ok"
                                and rec.get("session")), None)
     limits = cfg.get("timeouts", {})
@@ -197,7 +204,7 @@ def invoke(engine, role, task, *, run=None, repo=None, workdir=None, effort=None
                 cmd += ["-s", sandbox, "-C", str(workdir or target or r)]
             cmd += ["-m", model, "-c", f"model_reasoning_effort={effort}",
                     "--skip-git-repo-check", "--json", "-o", str(out), "-"]
-            if c.get("ephemeral") and not resume_session:
+            if c.get("ephemeral") and not resume_session and not session_key:
                 cmd.insert(-1, "--ephemeral")
             if sandbox == "workspace-write" and c.get("network"):
                 cmd[1:1] = ["-c", "sandbox_workspace_write.network_access=true"]
@@ -210,6 +217,8 @@ def invoke(engine, role, task, *, run=None, repo=None, workdir=None, effort=None
                 cmd += ["--effort", effort]
         common = {"id": call_id, "engine": engine, "role": role, "model": model,
                   "effort": effort, "effort_source": source, "repo": repo}
+        if session_key is not None:
+            common.update(session_key=session_key, discussion=discussion, participant=participant, round=round_number)
         append_usage(run, {**common, "event": "start", "ts": dt.datetime.now().isoformat(timespec="seconds")})
         started = time.monotonic()
         cwd = (workdir or target or r) if engine == "codex" and resume_session else r

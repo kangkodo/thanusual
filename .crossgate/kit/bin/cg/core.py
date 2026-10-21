@@ -15,7 +15,7 @@ VERDICTS = ["READY", "APPROVED", "REJECTED", "BLOCKED", "PASSED", "FAILED", "ESC
 LABEL = {"READY": "READY", "APPROVED": "승인", "REJECTED": "반려", "BLOCKED": "BLOCKED",
          "PASSED": "PASSED", "FAILED": "FAILED", "ESCALATED": "사람 조정 요청"}
 REVIEW = {"APPROVED", "REJECTED", "PASSED", "FAILED", "BLOCKED"}
-READ_ONLY_ROLES = {"request-reviewer", "plan-reviewer", "wiki-reviewer", "dev-reviewer"}
+READ_ONLY_ROLES = {"request-reviewer", "plan-reviewer", "wiki-reviewer", "dev-reviewer", "discussant"}
 # 작업 등급: CROSSGATE.md 10장.
 ROUTES = {"light": {"stages": ["request", "dev"], "effort": {"developer": "low", "dev-reviewer": "low"}},
           "standard": {"stages": ["request", "dev"]},

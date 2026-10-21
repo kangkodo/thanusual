@@ -4,6 +4,7 @@ from cg.core import KIT, config, is_pm, root
 
 
 ROLE_CHAPTERS = {
+    "discussant": ((1, 14), None),
     "request-reviewer": ((1, 2, 3, 4, 10), "요청"),
     "plan-reviewer": ((1, 2, 3, 4, 5, 10), "기획"),
     "dev-reviewer": ((1, 2, 3, 4, 5, 6, 10, 11), "개발"),
@@ -12,6 +13,7 @@ ROLE_CHAPTERS = {
     "qa": ((1, 2, 3, 6, 11), "QA"),
 }
 CHAPTER_TITLES = {
+    14: "토의",
     1: "단계와 역할", 2: "판정 규칙", 3: "루브릭",
     4: "검수 응답 형식 (검수 AI 공통)", 5: "반복 상한과 조정 요청",
     6: "버전 고정과 기록", 10: "작업 등급", 11: "PM 모드 (작업공간)",
