@@ -2,13 +2,17 @@
 
 문구는 기획만, 체크와 완료 근거는 개발만 바꾼다.
 
-- [ ] DEV-001 `scripts/build-site.mjs`를 만든다. Node 표준 라이브러리만 쓴다. `node scripts/build-site.mjs [출력 폴더]`(기본: 저장소 루트의 `dist`, 원본 경로는 스크립트 위치 기준 저장소 루트)로 실행하면 출력 폴더를 지우고 새로 만든 뒤, request C-2의 허용 목록 파일 31개만 같은 상대 경로로 복사한다. 허용 목록은 디렉터리가 아니라 파일 경로 배열이다. 항목이 하나라도 없으면 아무것도 덜 복사된 채 끝나지 않게 0이 아닌 종료 코드로 실패한다(C-6). 목록 위에 「브라우저가 받는 파일만. 새 사이트 파일은 여기에 넣는다」는 주석 한 줄.
+- [x] DEV-001 `scripts/build-site.mjs`를 만든다. Node 표준 라이브러리만 쓴다. `node scripts/build-site.mjs [출력 폴더]`(기본: 저장소 루트의 `dist`, 원본 경로는 스크립트 위치 기준 저장소 루트)로 실행하면 출력 폴더를 지우고 새로 만든 뒤, request C-2의 허용 목록 파일 31개만 같은 상대 경로로 복사한다. 허용 목록은 디렉터리가 아니라 파일 경로 배열이다. 항목이 하나라도 없으면 아무것도 덜 복사된 채 끝나지 않게 0이 아닌 종료 코드로 실패한다(C-6). 목록 위에 「브라우저가 받는 파일만. 새 사이트 파일은 여기에 넣는다」는 주석 한 줄.
+  완료 근거: scripts/build-site.mjs · 파일 31개 허용 목록, 출력 폴더 초기화, 누락·복사 오류 시 실패 및 불완전 출력 제거. AC-1~AC-4 통과
   확인 방법: tests/acceptance/site-build.test.js AC-1~AC-4
-- [ ] DEV-002 `package.json` scripts: `build`는 `node scripts/build-site.mjs`, `dev`는 빌드 뒤 `wrangler pages dev`(디렉터리 인자 없이, `wrangler.toml`의 출력 폴더를 따름). `test`가 수용 테스트 `tests/acceptance/site-build.test.js`도 돌게 한다(R-4). 방법은 루트에 그 파일을 import하는 `site-build.test.js` 한 줄 파일을 두거나 `test` 글롭에 그 파일을 추가하는 것 중 하나. 다른 수용 테스트는 `npm test`에 넣지 않는다.
+- [x] DEV-002 `package.json` scripts: `build`는 `node scripts/build-site.mjs`, `dev`는 빌드 뒤 `wrangler pages dev`(디렉터리 인자 없이, `wrangler.toml`의 출력 폴더를 따름). `test`가 수용 테스트 `tests/acceptance/site-build.test.js`도 돌게 한다(R-4). 방법은 루트에 그 파일을 import하는 `site-build.test.js` 한 줄 파일을 두거나 `test` 글롭에 그 파일을 추가하는 것 중 하나. 다른 수용 테스트는 `npm test`에 넣지 않는다.
+  완료 근거: package.json · build 추가, dev 빌드 선행, npm test에 지정 수용 테스트만 추가. npm test 통과(Node 47개·Python 10개)
   확인 방법: AC-5, `npm test` 출력에 AC-1~AC-5가 보임
-- [ ] DEV-003 `wrangler.toml`: `pages_build_output_dir = "dist"`. 위에 「Pages 대시보드 빌드 명령은 `npm run build`」 주석 한 줄. 기존 CARTO 주석은 그대로.
+- [x] DEV-003 `wrangler.toml`: `pages_build_output_dir = "dist"`. 위에 「Pages 대시보드 빌드 명령은 `npm run build`」 주석 한 줄. 기존 CARTO 주석은 그대로.
+  완료 근거: wrangler.toml · 출력 폴더 dist와 대시보드 빌드 명령 주석. 기존 CARTO 주석 유지, AC-5 통과
   확인 방법: AC-5
-- [ ] DEV-004 `.gitignore`에 `dist/`를 추가한다.
+- [x] DEV-004 `.gitignore`에 `dist/`를 추가한다.
+  완료 근거: .gitignore · dist/ 제외. npm run build 성공, git check-ignore dist/index.html 확인, AC-5 통과
   확인 방법: AC-5, 빌드 뒤 `git status`에 `dist/`가 안 보임
 
 ## 수용 기준
