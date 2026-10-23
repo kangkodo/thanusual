@@ -16,6 +16,7 @@
     "stall_seconds": 180
   },
   "parallel": { "max": 3 },
+  "discussion": { "rounds": 3, "participants": [{ "name": "codex", "engine": "codex" }, { "name": "claude", "engine": "claude" }] },
   "resume_reviews": true,
   "docs": { "root": "docs", "index": "INDEX.md", "exclude": [] },
   "repos": {

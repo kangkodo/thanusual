@@ -1,3 +1,4 @@
+from cg.discussion import summary
 import argparse
 import datetime as dt
 import json
@@ -121,6 +122,7 @@ def cmd_resume(a):
     route = 'standard' if route == 'quick' else route
     state = run_state(run, cfg)
     print(f"실행 {run.name} · 등급 {route} · 만든 시각 {meta.get('created', '알 수 없음')} · 상태 {state} · 닫힘 여부 {'예' if state == '닫힘' else '아니오'}")
+    print(summary(run))
     recs = load(run)
     rows = list(stage_rows(cfg, meta, recs))
     cap = config_value(cfg, 'cap', 3)

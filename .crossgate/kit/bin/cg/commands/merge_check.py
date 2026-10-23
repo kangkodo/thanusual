@@ -1,3 +1,4 @@
+from cg.discussion import discussions
 import hashlib
 import json
 import re
@@ -120,6 +121,9 @@ def cmd_merge_check(a):
     meta = json.loads((run / "meta.json").read_text(encoding="utf-8"))
     stages = route_conf(cfg, meta["route"])["stages"]
     problems = []
+    opened = [folder.name for folder, info in discussions(run) if info["status"] == "open"]
+    if opened:
+        problems.append("열린 토의: " + ", ".join(opened))
     hit = [f for f in changed if not f.startswith("ai-log/") and match(f, cfg.get("forbidden", []))]
     if hit:
         problems.append("금지 경로 변경: " + ", ".join(hit))

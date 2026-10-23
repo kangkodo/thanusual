@@ -1,3 +1,4 @@
+from cg.discussion import summary
 import json
 from cg.core import LABEL, at, config, config_value, current_run, escalation, load, open_ids, read_usage, reviews, root, run_state
 
@@ -8,6 +9,7 @@ def cmd_status(a):
     recs = load(run)
     meta = json.loads((run / "meta.json").read_text(encoding="utf-8"))
     print(f"{run.relative_to(root())} · 경로 {meta['route']} · {run_state(run, cfg)}")
+    print(summary(run))
     calls = read_usage(run)
     for engine in ("codex", "claude"):
         cs = [c for c in calls if c.get("engine", "codex") == engine]
