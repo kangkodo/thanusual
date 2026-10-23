@@ -99,12 +99,13 @@ test("AC-3 every local asset the pages and scripts reference is in the output", 
 });
 
 test("AC-4 a missing allowlisted file fails the build instead of shipping without it", () => {
-  // A copy of the repo without index.html, so the script can resolve paths from its own folder or the cwd.
+  // Only the script and the allowlisted files minus index.html: no repo-wide copy, so no local secrets either.
   const copy = mkdtempSync(join(tmpdir(), "thanusual-repo-"));
-  const skip = new Set([".git", "node_modules", "ai-log", ".claude", ".wrangler", "dist", "index.html"]);
   try {
-    cpSync(ROOT, copy, { recursive: true, filter: (p) => p === ROOT || !skip.has(relative(ROOT, p)) });
-    assert.equal(existsSync(join(copy, "index.html")), false);
+    for (const f of ["scripts/build-site.mjs", ...SITE_FILES.filter((f) => f !== "index.html")]) {
+      mkdirSync(dirname(join(copy, f)), { recursive: true });
+      cpSync(join(ROOT, f), join(copy, f));
+    }
     assert.throws(() => execFileSync(process.execPath, [join(copy, "scripts/build-site.mjs"), join(copy, "dist")], {
       cwd: copy, stdio: "pipe",
     }));
