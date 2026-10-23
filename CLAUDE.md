@@ -13,6 +13,7 @@ Usage stats (`analytics.js`, `lib/track.js`): PostHog, one project shared by eve
 - 121 places, not 140, for the **지금** layer. Official `citydata_ppltn` only. Do not use unofficial `/SeoulRtd/api/ppltn`.
 - Extra map layers are official Seoul Open Data Plaza feeds collected the same way (GitHub Actions, HTTP `:8088`). Workers `fetch()` ignores that port.
 - Snapshot lives on the `data` branch: `current.json` (지금), `living.json` (동네), `metro.json` (지하철), `street.json` (거리), `today.json` (오늘). Pages production branch is `release` (since 2026-09-26). Merging to `main` does not deploy; deploy = fast-forward `main` to `release`, only when the user asks (`crossgate deploy`). Do not build `data` as production.
+- Pages publishes `dist/`, not the repo root. `npm run build` (`scripts/build-site.mjs`) copies a file-by-file allowlist of browser files into it; the Pages build command is `npm run build`. Docs, agent files, `ai-log/`, `.crossgate/`, scripts and tests never ship. A new site file ships only after it is added to that list and to `tests/acceptance/site-build.test.js`. `functions/` is bundled from the repo root.
 - The `data` branch is squashed to one commit on the 1st of each month (`.github/workflows/squash-data.yml`). `baseline.json` holds the history, so nothing may depend on data-branch git history.
 - Sample Seoul key always returns 광화문·덕수궁 for citydata. Official key required for 121 and for the extra layers.
 - Secrets: never read, grep, or quote `secrets/`, `.env`, `*.key`. Load `../secrets/seoul.env` in code only.
@@ -27,8 +28,8 @@ Time exploration: `timeline.json` persists the last 48 hours independently of gi
 
 - Engine: Leaflet 1.9.x vendored in `vendor/leaflet/`. Overlays (circles, 250m cell polygons, HTML pins) are ours. No `leaflet.heat`.
 - Client tiles: same-origin `/tiles/{light|dark}/{z}/{x}/{y}{r}.png` only (style follows `prefers-color-scheme`; the bare `/tiles/{z}/{x}/{y}` form still means light). Pages Function injects `CARTO_API_KEY`. Never put that key in git or the browser bundle. Do **not** hit `tile.openstreetmap.org`.
-- Local tiles need `npx wrangler pages dev .` — not `python -m http.server`.
-- Never run `wrangler pages deploy .` from the repo root: `.dev.vars` sits in the output dir and would be published. Deploys go through git push only.
+- Local preview: `npm run dev` (build, then `wrangler pages dev` on `dist/`). Local tiles need it, not `python -m http.server`.
+- Never run `wrangler pages deploy` by hand, and never point it at the repo root: `.dev.vars` and every internal file would be published. Deploys go through git push to `release` only.
 - The tile Function only proxies z10–18 inside `TILE_BBOX` (`lib/tiles.js`); `map.js` `TILE_BOUNDS` must match. Referer is hotlink hygiene, not auth.
 - There is **no rate limit** on `/tiles/*` today. WAF rate-limiting rules need a zone, and a bare `*.pages.dev` host has none. Options when needed: attach a custom domain (then a WAF rule), or a code-side limiter. Every `/tiles/*` hit, including 400/403, counts toward the Pages Functions daily cap. Watch the Functions metrics after launch.
 - Bump `TILE_CACHE_VERSION` in `lib/tiles.js` when tile headers or style change; pages.dev has no cache purge.
@@ -39,7 +40,7 @@ Time exploration: `timeline.json` persists the last 48 hours independently of gi
 ## Design
 
 - Reference: `../vercel-design.md` (Vercel brand guideline) for judgment only: Geist type, monochrome, spacing tokens, no cards, evidence-first first screen, light/dark without a switcher. Do **not** add the Vercel wordmark, triangle, or `vercel-brand.css`; this is not a Vercel-authored page.
-- Fonts: Geist Sans vendored in `vendor/geist/` (OFL); Geist Mono is vendored but unused (tabular numerals cover the digits). Hangul falls back to the system gothic stack. No Google Fonts or other CDN assets; the PostHog loader in `analytics.js` is the one external script.
+- Fonts: Geist Sans vendored in `vendor/geist/` (OFL); Geist Mono is vendored but unused and not published (tabular numerals cover the digits). Hangul falls back to the system gothic stack. No Google Fonts or other CDN assets; the PostHog loader in `analytics.js` is the one external script.
 - Tokens live in `styles.css` `:root` (`--surface`, `--text`, `--border*`, `--hot`, `--calm`, `--space-*`, `--type-*`). Page CSS uses tokens, never raw hex. Map circle colors come from those tokens via `STYLE[level].token` in `map-radius.js`, resolved at draw time in `map.js`.
 - Copy: sentence case, no em dashes in prose, no eyebrows or pills. Level color (`--hot`) is always paired with the level text.
 - Icons live in `icons/` (`icon.svg` source plus rendered `icon-512.png` and `apple-touch-icon.png`, re-render with `qlmanage -t -s 512` then `sips -z 180 180`); the manifest is `manifest.webmanifest` at the root. Head links to all three.
@@ -48,7 +49,7 @@ Time exploration: `timeline.json` persists the last 48 hours independently of gi
 
 - Platform: Cloudflare Pages
 - Production URL: https://thanusual.pages.dev
-- Deploy workflow: auto-deploy on push to `main` (Pages). Collect workflow is `.github/workflows/collect.yml` (data branch only).
+- Deploy workflow: Pages builds on push to `release` (`npm run build`, output `dist/`); `main` does not deploy. Collect workflow is `.github/workflows/collect.yml` (data branch only).
 - Deploy status command: HTTP health check
 - Merge method: squash
 - Project type: static web app (`index.html`, `styles.css`, `app.js`)
@@ -57,7 +58,7 @@ Time exploration: `timeline.json` persists the last 48 hours independently of gi
 ### Custom deploy hooks
 
 - Pre-merge: none
-- Deploy trigger: automatic on push to main
+- Deploy trigger: fast-forward `main` to `release`, only when the user asks
 - Deploy status: poll production URL
 - Health check: https://thanusual.pages.dev
 

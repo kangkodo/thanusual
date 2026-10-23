@@ -8,6 +8,7 @@ __pycache__/
 .venv/
 .claude/skills/gstack/
 node_modules/
+dist/
 .wrangler/
 .gstack/
 

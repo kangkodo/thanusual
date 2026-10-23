@@ -73,7 +73,7 @@
   "qa": {
     "runner": "codex",
     "acceptance": "tests/acceptance",
-    "serve": "npx wrangler pages dev . --port 8788",
+    "serve": "npm run build && npx wrangler pages dev --port 8788",
     "url": "http://localhost:8788"
   },
   "deploy": {
