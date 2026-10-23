@@ -10,3 +10,4 @@
 | 10-23 16:54 | plan | 1 | READY | claude | 0dca04f |  |  |
 | 10-23 16:55 | plan | 1 | 승인 | codex gpt-6-astra | 15ce745 |  | 1회차 승인. 권고(AC-4 저장소 전체 복사 대신 허용 파일만) 반영 |
 | 10-23 16:57 | dev | 1 | READY | codex | 3ec62a3 |  |  |
+| 10-23 16:58 | dev | 1 | 승인 | claude claude-opus-5-5 | 2f840ed |  | 1회차 승인. 권고: 출력 폴더 인자로 저장소 하위 폴더(docs 등)를 직접 주면 지워짐. 기본값·npm run build는 안전하고 인자는 테스트용이라 보류 |
