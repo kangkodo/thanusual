@@ -16,11 +16,11 @@
 - `npm test`의 글롭은 `'*.test.js' 'lib/*.test.js' 'functions/**/*.test.js'`다.
 
 ## 확정 요구사항
-- R-1: 빌드 단계가 허용 목록에 있는 사이트 파일만 출력 폴더로 복사하고, Pages는 그 폴더만 배포한다.
-- R-2: 허용 목록 밖의 파일은 출력 폴더에 들어가지 않는다. 허용 목록 디렉터리 안이라도 `*.test.js`는 넣지 않는다.
+- R-1: 빌드 단계가 허용 목록에 **파일 단위로** 적힌 사이트 파일만 출력 폴더로 복사하고, Pages는 그 폴더만 배포한다. 허용 목록에 없는 새 파일은 어느 폴더에 생겨도 나가지 않는다.
+- R-2: 허용 목록 밖의 파일은 출력 폴더에 들어가지 않는다. 이전 빌드의 잔여물도 남지 않는다.
 - R-3: 사이트 동작(지도 타일 Function, 404 페이지, `_headers` 캐시, 데이터 폴백)은 그대로다.
 - R-4: 허용 규칙이 맞는지 보여 주는 테스트가 `npm test`에서 돈다.
-- R-5: 로컬 `wrangler pages dev`로 막힌 경로(404)와 정상 페이지를 둘 다 확인한다.
+- R-5: 로컬 `wrangler pages dev`로 막힌 경로(404)와 정상 페이지를 둘 다 확인한다. 완료 기준은 C-14.
 - R-6: 로컬 개발 명령과 문서가 새 구조를 따른다.
 
 ## 하지 않을 일
@@ -34,25 +34,32 @@
 | ID | 결정 | 처리 | 근거 · 답 |
 |---|---|---|---|
 | C-1 | 막는 방법 | 사용자 | 빌드 단계 허용 목록 복사(방법 A). B(미들웨어)·C(폴더 이동)는 기각 |
-| C-2 | 허용 목록 내용 | 도출 | "조사한 사실"의 사이트 사용 파일. `places.json`·`README.md`·문서·스크립트·테스트는 제외 |
-| C-3 | 허용 디렉터리 안의 테스트 파일 | 도출 | R-2. `lib/*.test.js`는 사이트가 쓰지 않음 |
+| C-2 | 허용 목록 단위와 내용 | 사용자 | 파일 단위 명시. 내용은 브라우저가 받는 파일만: 루트 `index.html`, `404.html`, `app.js`, `map.js`, `map-radius.js`, `shared.js`, `analytics.js`, `styles.css`, `manifest.webmanifest`, `robots.txt`, `_headers`; `lib/{grid-cells,layers,pins,track}.js`; `vendor/leaflet/{leaflet.js,leaflet.css}`와 `leaflet.css`·`leaflet.js`가 쓰는 `vendor/leaflet/images/*.png` 5개; `vendor/geist/{Geist-Variable.woff2,LICENSE.txt}`(OFL 고지); `vendor/{seoul-dongs,seoul-grid}.geojson`; `icons/{icon.svg,icon-512.png,apple-touch-icon.png}`; `data/{current,grid}.json`. 제외: `lib/tiles.js`(Function이 빌드 때 루트에서 import하는 서버 측 의존성, 브라우저는 안 받음), `GeistMono-Variable.woff2`(CLAUDE.md: 안 씀), `places.json`, 문서·스크립트·테스트 |
+| C-3 | 허용 목록에 빠진 자산 | 도출 | 파일 단위라 새 자산은 목록에 넣어야 나간다. 페이지·JS·CSS가 참조하는데 출력에 없으면 테스트가 실패한다(R-4) |
 | C-4 | 출력 폴더 이름과 git | 조정값 | `dist/`, `.gitignore`에 추가. 빌드마다 비우고 새로 만든다 |
 | C-5 | 빌드 스크립트 위치·형식 | 조정값 | `scripts/build-site.mjs`(Node 표준 라이브러리만), `npm run build`로 실행. 의존성 추가 없음 |
 | C-6 | 허용 목록 파일이 없을 때 | 조정값 | 빌드 실패(0 아닌 종료 코드). 조용히 빠진 채 배포되지 않게 한다 |
 | C-7 | `wrangler.toml` 출력 폴더 | 도출 | `pages_build_output_dir = "dist"` (C-1) |
 | C-8 | 로컬 개발 명령 | 도출 | `npm run dev`가 빌드 뒤 `wrangler pages dev`(출력 폴더는 `wrangler.toml`을 따름). `.crossgate/config.json` `qa.serve`도 같은 방식으로 Master가 맞춘다 |
 | C-9 | `.dev.vars` 위치 | 도출 | 프로젝트 루트에 그대로 둔다. 출력 폴더가 `dist/`가 되므로 CLAUDE.md의 「`.dev.vars`가 출력 폴더에 있다」 경고는 고쳐 쓴다 |
-| C-10 | 대시보드 빌드 명령 | 도출 | `npm run build`. 사용자가 다음 배포(`release` fast-forward) 전에 설정한다. 출력 폴더가 아직 `.`인 지금 설정해도 사이트에는 영향이 없다. 설정이 빠지면 빌드가 출력 폴더 없음으로 실패해 이전 배포가 유지된다(새지 않는 쪽으로 실패) |
+| C-10 | 대시보드 빌드 명령 | 도출 | `npm run build`. 사용자가 이 변경을 `release`로 배포하기 전에 설정한다. 지금 `release`에는 `build` 스크립트가 없으므로 미리 설정하면 그 사이 `release` 빌드는 실패하고 기존 배포가 그대로 유지된다(사이트는 계속 열림). 그래서 설정은 배포 직전에 한다. 설정이 빠진 채 배포하면 출력 폴더 `dist`가 없어 빌드가 실패하고 기존 배포가 유지된다(새지 않는 쪽으로 실패) |
 | C-11 | 테스트 범위 | 조정값 | 임시 폴더에 빌드해 허용 파일이 있고 내부 파일(`AGENTS.md`, `ai-log/`, `.crossgate/`, `docs/`, `scripts/`, `package.json`, `wrangler.toml`, `*.test.js` 등)이 없음을 확인. 루트 `*.test.js`로 두어 `npm test`가 돈다 |
-| C-12 | 이미 공개된 사본 | 해당 없음 | 옛 배포 고유 주소·검색 색인은 코드로 못 지운다. 보고에 사용자 할 일로 적는다. 응답이 `max-age=0`이라 CDN 캐시는 남지 않는다 |
+| C-12 | 이미 공개된 사본 | 해당 없음 | 옛 배포 고유 주소·검색 색인·제3자 캐시·보관 사이트는 코드로 못 지운다. 이번 변경은 기존 사본의 제거를 보장하지 않는다. 보고에 사용자 할 일(옛 배포 삭제, Search Console 삭제 요청)로 적는다 |
 | C-13 | `data` 브랜치 빌드 | 해당 없음 | 이미 빌드되지 않는다(조사한 사실) |
+| C-14 | 완료 기준(검증 범위) | 사용자 | 로컬까지: 빌드 산출물 테스트(허용 파일 정확히 일치, 잔여물 없음, 참조 자산 존재, 누락 시 실패), 로컬 `wrangler pages dev`에서 내부 경로 404·사이트 자산 200·`_headers` 캐시 헤더·데이터 폴백 파일 200·타일 Function 연결(키 없이 503), 브라우저로 페이지가 뜨는지. 실제 CARTO 타일 성공과 배포 뒤 운영 확인은 별도 상태(미실행)로 보고 |
+| C-15 | 배포 설명 문서 | 도출 | CLAUDE.md Deploy Configuration·README의 「main push = 배포」 설명은 Product locks의 `release` 기준과 어긋난다. 영향 문서 갱신 때 `release` 기준으로 맞춘다 |
 
 ## 허락 범위
 - 작업 브랜치 push와 PR 생성: 허락(세션 위임 범위).
 - main 병합: 금지 경로를 건드려 자동 병합 불가. 병합 전에 사용자에게 묻는다.
 - `release` 변경·배포, Cloudflare 대시보드 변경: 하지 않는다.
-- 설치: 없음(`npx wrangler`는 이미 쓰던 로컬 개발 도구).
+- 설치: 없음. `npx wrangler --version`이 4.152.0으로 이미 실행된다(2026-10-23 확인). 실행이 안 되면 설치하지 않고 멈춰 묻는다.
+- 외부 호출: 로컬 브라우저 확인 때 페이지가 원래 하는 공개 데이터 GET(GitHub raw·jsDelivr) 허락(사용자). PostHog는 localhost에서 로드되지 않는다. 이 worktree에는 `.dev.vars`가 없어 타일 Function이 CARTO로 나가지 않는다(키 없으면 503). 그 밖의 외부 전송·유료 호출 없음.
+- DB 쓰기: 해당 없음.
 
 ## 사용자 확인 기록
 - 2026-10-23 · C-1 · 방법 A(빌드 허용 목록) 선택
 - 2026-10-23 · 등급 · 보통 선택 → 금지 경로 때문에 규칙대로 무거움으로 승격, 사용자에게 알림
+- 2026-10-23 · C-2 · 파일 단위 명시(요청 검수 I-1)
+- 2026-10-23 · C-14 · 로컬 확인까지, 실제 타일·배포 뒤 확인은 별도 보고(I-2)
+- 2026-10-23 · 허락 범위 · 로컬 브라우저 확인의 공개 데이터 GET 허용(I-3)

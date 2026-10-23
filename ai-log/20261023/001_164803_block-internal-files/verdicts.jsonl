@@ -1,0 +1,1 @@
+{"ts": "2026-10-23T16:50:55", "stage": "request", "attempt": 1, "verdict": "REJECTED", "actor": "codex", "model": "gpt-6-astra", "commit": "ec57292fa814b0aa1cba5f6dec80577fb7aac2e1", "repo": null, "issues": {"I-1": "open", "I-2": "open", "I-3": "open"}, "unverified": [], "evidence": [], "tokens": null, "note": "허용 디렉터리 범위·검증 범위·QA 외부 호출 허락이 결정 목록에 없음"}
