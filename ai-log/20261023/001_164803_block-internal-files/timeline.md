@@ -13,3 +13,4 @@
 | 10-23 16:58 | dev | 1 | 승인 | claude claude-opus-5-5 | 2f840ed |  | 1회차 승인. 권고: 출력 폴더 인자로 저장소 하위 폴더(docs 등)를 직접 주면 지워짐. 기본값·npm run build는 안전하고 인자는 테스트용이라 보류 |
 | 10-23 17:02 | qa | 1 | PASSED | codex gpt-6-astra | d0a595d |  | AC-1~AC-6 통과. Master가 http-results·probe-result·blocked.png 표본 확인. 문서 커밋은 코드 불변. AC-7·실제 타일은 C-14대로 미실행 |
 | 10-23 17:02 | wiki | 1 | READY | claude | 4819291 |  |  |
+| 10-23 17:04 | wiki | 1 | 승인 | codex gpt-6-astra | a9dd4c2 |  | 1회차 승인. 권고(인수인계 문구) 반영 |
